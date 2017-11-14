@@ -136,7 +136,7 @@ if __name__=="__main__":
             [dd.append(float(x)) for x in data]
             list_of_states.append(dd)
 
-    featurizer = sklearn.pipeline.FeatureUnion([("rbf1", RBFSampler(gamma=rbf_var, n_components=rbf_comp))])
+    featurizer = sklearn.pipeline.FeatureUnion([("rbf1", RBFSampler(gamma=rbf_var, n_components=rbf_comp, random_state=1))])
     featurizer.fit(np.array(list_of_states)) #Use this featurizer for normalization
 
 
