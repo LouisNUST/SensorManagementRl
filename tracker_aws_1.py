@@ -1,15 +1,14 @@
-from target import target
-from sensor import sensor
-from measurement import measurement
-import numpy as np
 import random
 import sys
-from scenario import scenario
-from scipy.stats import norm
-import matplotlib.pyplot as plt
+
+import numpy as np
 import sklearn.pipeline
 from sklearn.kernel_approximation import RBFSampler
 
+from measurement import measurement
+from scenario import scenario
+from sensor import sensor
+from target import target
 
 
 class EKF_tracker:
@@ -86,23 +85,10 @@ def gen_learning_rate(iteration,l_max,l_min,N_max):
     beta = np.log((alpha/l_min-1))/N_max
     return (alpha/(1+np.exp(beta*iteration)))
 
-def normalize_state(current_state,scen):
-    pos_coeff_x = np.tan(np.pi/2*.9)/max(abs(scen.x_max),abs(scen.x_min))
-    pos_coeff_y = np.tan(np.pi / 2 * .9) / max(abs(scen.y_max), abs(scen.y_min))
-    pos_coeff_vel = np.tan(np.pi / 2 * .9) / max(abs(scen.vel_max), abs(scen.vel_min))
-
-    current_state[0] = 2.0/np.pi*np.arctan(pos_coeff_x*current_state[0])
-    current_state[1] = 2.0 / np.pi * np.arctan(pos_coeff_y * current_state[1])
-    current_state[2] = 2.0 / np.pi * np.arctan(pos_coeff_vel * current_state[2])
-    current_state[3] = 2.0 / np.pi * np.arctan(pos_coeff_vel * current_state[3])
-    current_state[4] = 2.0 / np.pi * np.arctan(pos_coeff_x * current_state[4])
-    current_state[5] = 2.0 / np.pi * np.arctan(pos_coeff_y * current_state[5])
-
-    return (current_state)
 
 if __name__=="__main__":
 
-    base_path = "/Users/u6042446/Desktop/ali_files/westlaw/DeepSensorManagement/Test/" #change this one (this is the base-path to store all required metrics)
+    base_path = "/Users/u6046782/SensorManagementRI" #change this one (this is the base-path to store all required metrics)
     #Inputs:
     #1) number of RBF components (number of features)
     #2) variance of RBF kernels
@@ -144,7 +130,6 @@ if __name__=="__main__":
     num_states = RBF_COMPONENTS
     weight = np.random.normal(0, 1, [2, RBF_COMPONENTS]) #initialize weight matrix
     sigma_max = add_variance
-    num_episodes = []
     gamma = .99 #discount factor
 
     episode_length = 2000 #length of each episode
@@ -154,13 +139,12 @@ if __name__=="__main__":
     #parameters to calculate uncertainty
     window_size = 50 #uncertainty is calculated over a window of "window_size" iterations
     window_lag = 10
-    return_saver = []
+    return_saver = [] # i.e. rewards
     episode_counter = 0
     weight_saver1 = []
     weight_saver2 = []
     avg_reward = []
     var_reward = []
-    list_of_states = []
 
     #Main loop to count number of valid episodes
     while episode_counter<N_max:
@@ -181,14 +165,7 @@ if __name__=="__main__":
         init_target_state = [x,y,xdot,ydot]#initialize target state
         #Add noise to initial target location since the tracker doesn't know about the initial location
         init_for_smc = [x+np.random.normal(0,5),y+np.random.normal(0,5),np.random.normal(0,5),np.random.normal(0,5)]#init state for the tracker (tracker doesn't know about the initial state)
-        #initialize sensor location randomly too
-        init_sensor_state = [2000*random.random()-1000,2000 * random.random() - 1000,3,-2]#initial sensor-state
-        temp_loc = np.array(init_target_state[0:2]).reshape(2,1)
-        init_location_estimate = temp_loc+0*np.random.normal(np.zeros([2,1]),10)
-        init_location_estimate = [init_location_estimate[0][0],init_location_estimate[1][0]]
-        init_velocity_estimate = [6*random.random()-3,6*random.random()-3]
-        init_velocity_estimate = [init_target_state[2],init_target_state[3]]
-        init_estimate = init_location_estimate+init_velocity_estimate
+
         #Initial covariance of estimation is based on MAX_UNCERTAINTY
         init_covariance = np.diag([MAX_UNCERTAINTY,MAX_UNCERTAINTY,MAX_UNCERTAINTY,MAX_UNCERTAINTY])#initial covariance of state estimation
         #Create target object
@@ -204,10 +181,13 @@ if __name__=="__main__":
         measure = measurement(bearing_var)#create measurement object
         #Some variables to keep important stuff
         m = []
-        x_est = []; y_est = []; x_vel_est = []; y_vel_est = []
-        x_truth = [];
-        y_truth = [];
-        x_vel_truth = [];
+        x_est = []
+        y_est = []
+        x_vel_est = []
+        y_vel_est = []
+        x_truth = []
+        y_truth = []
+        x_vel_truth = []
         y_vel_truth = []
         uncertainty = []
         vel_error = []
@@ -216,7 +196,7 @@ if __name__=="__main__":
         innovation = []
         reward = []
         episode_condition = True
-        n=0
+        n = 0
         violation = 0
         #store required information
         episode_state = []
@@ -290,7 +270,7 @@ if __name__=="__main__":
 
             #Build discount vector
             discount_vector = gamma*np.array(discount_vector)
-            discounted_return+= (1.0*reward[-1])*discount_vector
+            discounted_return += (1.0*reward[-1])*discount_vector
             new_return = 1.0*reward[-1]
             list_discounted_return = list(discounted_return)
             list_discounted_return.append(new_return)
@@ -311,7 +291,6 @@ if __name__=="__main__":
             episode_actions = s.sensor_actions #all sensor actions
             #init_weight = np.array(weight)
             rate = gen_learning_rate(episode_counter,learning_rate,1E-8,10000) #generate a new learning rate
-            total_adjustment = np.zeros(np.shape(weight))
             #loop over all stored state/actions (trajectories)
             for e in range(0,len(episode_actions)):
                 #calculate gradiant
@@ -340,8 +319,6 @@ if __name__=="__main__":
         else:
             #print("garbage trajectory: no-update")
             pass
-        num_episodes.append(n)
-        #print(weight)
 
     for r in avg_reward: writer_avg_reward.write(str(r)+"\n")
     for w in weight_saver1: writer_weight_update.write(str(w)+"\n")

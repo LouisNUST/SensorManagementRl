@@ -1,5 +1,6 @@
 from motion_model import motion_model
 import numpy as np
+import matplotlib.pyplot as plt
 
 class target(motion_model):
     def __init__(self, initial_location, mean_x_vel, mean_y_vel, x_var, y_var,motion_type):
@@ -40,10 +41,23 @@ class target(motion_model):
         self.current_velocity = new_velocity
         self.historical_velocity.append(self.current_velocity)
 
+    def plot_sensor_trajectory(self):
+        x = []
+        y = []
+        [x.append(z[0]) for z in self.historical_location]
+        [y.append(z[1]) for z in self.historical_location]
+        plot1, = plt.plot(x,y,"bs-",linewidth=3)
+        plt.xlabel("x",size=15)
+        plt.ylabel("y",size=15)
+        plt.grid(True)
+        plt.show()
+
 if __name__=="__main__":
     t = target([100,100],2,2,.1,.1,"CONS_V")
     for n in range(0,500):
         t.update_location()
+
+    t.plot_sensor_trajectory()
 
 
 

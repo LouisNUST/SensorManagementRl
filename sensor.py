@@ -1,9 +1,9 @@
-import numpy as np
-import random
-from motion_model import motion_model
-from motion_init_object import motion_init_object
-
 import matplotlib.pyplot as plt
+import numpy as np
+
+from motion_init_object import motion_init_object
+from motion_model import motion_model
+
 
 class sensor(motion_model,motion_init_object):
     def __init__(self,type):
@@ -141,10 +141,18 @@ class sensor(motion_model,motion_init_object):
 
 
 if __name__=="__main__":
-    s = sensor([500,500],3,-2,.01,.01)
+
+    weight = np.random.normal(0, 1, [2, 20])
+    sigma = 1
+    current_state = np.random.normal(0, 1, 20)
+    s = sensor("POLICY_COMM")
 
     for n in range(0,500):
-        s.update_location()
+        weight += .01
+        current_state += .01
+        s.update_location(weight, sigma, np.array(current_state))
+
+    s.plot_sensor_trajectory()
 
     
 

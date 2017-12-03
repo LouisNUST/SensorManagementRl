@@ -44,3 +44,22 @@ class motion_model:
         return (A,B)
     #def constant_turn(self):
 
+if __name__=="__main__":
+
+    mm = motion_model(1)
+    A, B = mm.constant_accelaration()
+    print "constant acceleration:"
+    print A
+    print B
+
+    A, B = mm.constant_velocity(0.1)
+    print "constant velocity:"
+    print A
+    print B
+
+    c = np.random.multinomial(1,np.array([1,1,1])/3.0).argmax()
+    print c
+    A, B = mm.binary_command(c)
+    print "binary:"
+    print A
+    print B
