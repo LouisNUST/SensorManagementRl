@@ -1,6 +1,7 @@
-import sklearn
-from sklearn.kernel_approximation import RBFSampler
 import numpy as np
+import sklearn
+import sklearn.pipeline
+from sklearn.kernel_approximation import RBFSampler
 
 
 class RBFFeaturizer:
@@ -16,3 +17,6 @@ class RBFFeaturizer:
 
         self._featurizer = sklearn.pipeline.FeatureUnion([("rbf1", RBFSampler(gamma=rbf_variance, n_components=num_rbf_components, random_state=1))])
         self._featurizer.fit(np.array(list_of_states))  # Use this featurizer for normalization
+
+    def transform(self, current_state):
+        return self._featurizer.transform(np.array(current_state).reshape(1, len(current_state)))

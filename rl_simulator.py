@@ -14,7 +14,8 @@ class OTPSimulator:
             episode = _OTPSimulationEpisode(gamma=.99)
             target = target_factory()
             A, B = target.move()
-            tracker = EKFTracker(target.get_x(), target.get_y(), 1E9, A, B, target.x_var(), target.y_var(), environment.bearing_variance())
+            tracker = EKFTracker(target.get_x(), target.get_y(), 1E9, A, B, target.get_x_variance(), target.get_y_variance(), environment.bearing_variance())
+            agent.reset_location()
             episode_step_counter = 0
             while episode.is_valid:
                 target.update_location()
@@ -22,7 +23,7 @@ class OTPSimulator:
                 tracker.update_states(agent.get_current_location(), environment.get_last_bearing_measurement())
                 current_state = self._create_current_state(tracker, agent, environment.get_last_bearing_measurement())
                 current_state = self._normalize_state(current_state, environment)
-                current_state = featurizer.transform(np.array(current_state).reshape(1, len(current_state)))  # apply this to RBF kernel
+                current_state = featurizer.transform(current_state)
                 current_state = list(current_state[0])
                 for x in current_state:
                     if x > 1 or x < -1:
@@ -37,7 +38,13 @@ class OTPSimulator:
                 episode_step_counter += 1
 
             if episode.is_valid:
-                agent.update_parameters(episode_counter, episode.discounted_return, episode.states)
+                condition = agent.update_parameters(episode_counter, episode.discounted_return, episode.states)
+
+                if condition:
+                    simulation.rewards.append(sum(episode.reward))
+                    if episode_counter > 0:
+                        print(episode_counter, np.mean(simulation.rewards))
+                    episode_counter += 1
 
     def _create_current_state(self, tracker, agent, last_bearing_measurement):
         # create current state s(t): target_state + sensor_state + bearing measurement + range

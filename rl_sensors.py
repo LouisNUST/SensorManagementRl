@@ -52,9 +52,12 @@ class ParameterizedPolicyOTPSensor:
         return self._sensor_actions
 
     def update_parameters(self, iteration, discounted_return, episode_states):
-        self._weights = self._parameter_updater.update_parameters(self._weights, iteration, self._sensor_actions,
-                                                                  episode_states, discounted_return,
-                                                                  self._num_features, self._sigma)
+        condition, new_weights = self._parameter_updater.update_parameters(self._weights, iteration,
+                                                                           self._sensor_actions, episode_states,
+                                                                           discounted_return, self._num_features,
+                                                                           self._sigma)
+        self._weights = new_weights
+        return condition
 
 
 class PolicyGradientParameterUpdater:
@@ -71,7 +74,7 @@ class PolicyGradientParameterUpdater:
             #calculate gradient
             state = np.array(episode_states[e]).reshape(num_states, 1)
             gradient = ((episode_actions[e].reshape(2, 1) - weights.dot(state)).dot(state.transpose())) / sigma**2
-            if np.isnan(gradient[0][0]) or np.linalg.norm(weights[0,:])>1E3:
+            if np.isnan(gradient[0][0]) or np.linalg.norm(weights[0, :]) > 1E3:
                 condition = False
                 break
             # an unbiased sample of return (We replace Q(s,a) by an estimate)
@@ -81,7 +84,7 @@ class PolicyGradientParameterUpdater:
         if not condition:
             weights = prev_weight
 
-        return weights
+        return condition, weights
 
     def _gen_learning_rate(self, iteration, l_max, l_min, N_max):
         if iteration > N_max:
