@@ -55,3 +55,6 @@ class ConstantVelocityTarget:
 
     def get_current_location(self):
         return self._current_location
+
+    def get_current_velocity(self):
+        return self._current_velocity

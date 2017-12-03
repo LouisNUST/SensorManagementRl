@@ -1,5 +1,6 @@
 import numpy as np
 from rl_trackers import EKFTracker
+from rl_metrics import EpisodeMetrics
 
 
 class OTPSimulator:
@@ -7,11 +8,12 @@ class OTPSimulator:
         self._max_num_episodes = max_num_episodes
         self._episode_length = episode_length
 
-    def simulate(self, environment, agent, featurizer, target_factory):
+    def simulate(self, environment, agent, featurizer, simulation_metrics, target_factory):
         simulation = _OTPSimulation(window_size=50, window_lag=10)
         episode_counter = 0
         while episode_counter < self._max_num_episodes:
             episode = _OTPSimulationEpisode(gamma=.99)
+            episode_metrics = EpisodeMetrics()
             target = target_factory()
             A, B = target.move()
             tracker = EKFTracker(target.get_x(), target.get_y(), 1E9, A, B, target.get_x_variance(), target.get_y_variance(), environment.bearing_variance())
@@ -30,9 +32,11 @@ class OTPSimulator:
                         episode.is_valid = False
                 # update the location of sensor based on the current state
                 agent.update_location(np.array(current_state))
+                episode_metrics.save(tracker, target)
                 episode.states.append(current_state)
                 episode.update_reward(simulation, tracker)
                 episode.update_discounted_return()
+                episode_metrics.iteration.append(episode_step_counter)
                 if episode_step_counter > self._episode_length:
                     break
                 episode_step_counter += 1
@@ -42,9 +46,12 @@ class OTPSimulator:
 
                 if condition:
                     simulation.rewards.append(sum(episode.reward))
-                    if episode_counter > 0:
+                    if episode_counter % 100 == 0 and episode_counter > 0:
                         print(episode_counter, np.mean(simulation.rewards))
+                        simulation_metrics.save_rewards(episode_counter, simulation.rewards)
+                        simulation.rewards = []
                     episode_counter += 1
+                    simulation_metrics.save_weights(agent.get_weights())
 
     def _create_current_state(self, tracker, agent, last_bearing_measurement):
         # create current state s(t): target_state + sensor_state + bearing measurement + range
@@ -79,8 +86,6 @@ class _OTPSimulation:
         self.window_size = window_size
         self.window_lag = window_lag
         self.rewards = []
-        self.avg_reward = []
-        self.var_reward = []
 
 
 class _OTPSimulationEpisode:

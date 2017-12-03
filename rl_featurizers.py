@@ -8,7 +8,7 @@ class RBFFeaturizer:
     def __init__(self, num_rbf_components, rbf_variance):
         # Read all randomly-generated samples for feature-generation (this is done for matching and feature construction)
         list_of_states = []
-        with open("sampled_states","r") as f:
+        with open("sampled_states", "r") as f:
             for line in f:
                 data = line.strip().split("\t")
                 dd = []
