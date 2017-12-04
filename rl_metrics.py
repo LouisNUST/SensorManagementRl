@@ -33,7 +33,7 @@ class SimulationMetrics:
         plt.xlabel("iteration", size=15)
         plt.ylabel("avg. reward", size=15)
         plt.grid(True)
-        plt.show()
+        plt.savefig(self._base_path + "avg-reward.png")
 
     def save_weights(self, weights):
         self.weight_saver1.append(weights[0][0])
