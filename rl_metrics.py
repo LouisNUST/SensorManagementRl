@@ -86,7 +86,7 @@ class EpisodeMetrics:
         self.iteration = []
         self.innovation = []
 
-    def save(self, tracker, target):
+    def save(self, iteration, tracker, target):
         estimate = tracker.get_target_state_estimate()
         truth = target.get_current_location()
         self.x_est.append(estimate[0])
@@ -101,3 +101,4 @@ class EpisodeMetrics:
         self.pos_error.append(np.linalg.norm(estimate[0:2] - np.array(truth).reshape(2, 1)))
         normalized_innovation = (tracker.get_innovation_list()[-1]) / tracker.get_innovation_var()[-1]
         self.innovation.append(normalized_innovation[0])
+        self.iteration.append(iteration)

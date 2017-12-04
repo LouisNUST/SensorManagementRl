@@ -32,11 +32,10 @@ class OTPSimulator:
                         episode.is_valid = False
                 # update the location of sensor based on the current state
                 agent.update_location(np.array(current_state))
-                episode_metrics.save(tracker, target)
                 episode.states.append(current_state)
                 episode.update_reward(simulation, tracker)
                 episode.update_discounted_return()
-                episode_metrics.iteration.append(episode_step_counter)
+                episode_metrics.save(episode_step_counter, tracker, target)
                 if episode_step_counter > self._episode_length:
                     break
                 episode_step_counter += 1
