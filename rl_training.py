@@ -30,11 +30,11 @@ if __name__ == "__main__":
     learning_rate = .001
 
     # featurizer = RBFFeaturizer(num_rbf_components=num_features, rbf_variance=rbf_variance)
-
     # agent = ParameterizedPolicyOTPSensor(num_features=num_features,
     #                                      parameter_updater=PolicyGradientParameterUpdater(learning_rate=learning_rate),
     #                                      sigma=sensor_variance)
 
+    featurizer = None
     agent = NeuralNetPolicyOTPSensor(num_input=8, learning_rate=learning_rate, sigma=sensor_variance)
 
     environment = OTPEnvironment(bearing_variance=1E-2)
@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     simulation_metrics = SimulationMetrics(base_path="/Users/u6046782/SensorManagementRl/out/")
 
-    simulator.simulate(environment, agent, featurizer=None, simulation_metrics=simulation_metrics,
+    simulator.simulate(environment, agent, featurizer, simulation_metrics=simulation_metrics,
                        target_factory=lambda: ConstantVelocityTarget())
 
     simulation_metrics.write_metrics_to_files(num_features, rbf_variance, sensor_variance, learning_rate, agent.get_weights())

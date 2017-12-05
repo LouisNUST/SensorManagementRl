@@ -68,7 +68,14 @@ class NeuralNetPolicyOTPSensor:
         self._optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate, decay=0.9)
         self._taken_actions = tf.placeholder(tf.float32, (None, 2), name="taken_actions")
         self._discounted_rewards = tf.placeholder(tf.float32, (None,), name="discounted_rewards")
-        self._loss = tf.losses.mean_squared_error(labels=self._taken_actions, predictions=self._out)
+
+        dist = tf.contrib.distributions.Normal(loc=self._out, scale=[1.])
+        sample = dist.sample()
+
+        # self._loss = tf.losses.mean_squared_error(labels=self._taken_actions, predictions=sample)
+        # self._loss = -dist.log_prob(sample) * self._taken_actions
+        self._loss = dist.log_prob(sample) - dist.log_prob(self._taken_actions)
+
         self._gradients = self._optimizer.compute_gradients(self._loss)
         # compute policy gradients
         for i, (grad, var) in enumerate(self._gradients):
@@ -116,9 +123,6 @@ class NeuralNetPolicyOTPSensor:
             states  = np.array([episode_states[t]])
             actions = np.array(episode_actions[t])
             rewards = np.array([discounted_return[t]])
-
-            # evaluate gradients
-            grad_evals = [grad for grad, var in self._gradients]
 
             # perform one update of training
             self._sess.run([self._train_op], feed_dict={
