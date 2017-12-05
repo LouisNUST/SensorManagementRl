@@ -48,26 +48,26 @@ class SimulationMetrics:
         post_fix = "_" + str(num_features) + "_" + str(rbf_variance) + "_" + str(sigma) + "_" + str(learning_rate)+".txt"
         writer_avg_reward = open_file_for_writing(self._base_path + "avg_reward" + post_fix)
         writer_var_reward = open_file_for_writing(self._base_path + "var_reward" + post_fix)
-        writer_weight_update = open_file_for_writing(self._base_path + "weight_update" + post_fix)
-        writer_final_weight = open_file_for_writing(self._base_path + "final_weight" + post_fix)
+        # writer_weight_update = open_file_for_writing(self._base_path + "weight_update" + post_fix)
+        # writer_final_weight = open_file_for_writing(self._base_path + "final_weight" + post_fix)
 
         for r in self.avg_reward:
             writer_avg_reward.write(str(r) + "\n")
-        for w in self.weight_saver1:
-            writer_weight_update.write(str(w) + "\n")
-        w1 = list(weights[0])
-        w2 = list(weights[1])
-        ww1 = []
-        ww2 = []
-        [ww1.append(str(x)) for x in w1]
-        [ww2.append(str(x)) for x in w2]
-        writer_final_weight.write("\t".join(ww1) + "\n")
-        writer_final_weight.write("\t".join(ww2))
+        # for w in self.weight_saver1:
+        #     writer_weight_update.write(str(w) + "\n")
+        # w1 = list(weights[0])
+        # w2 = list(weights[1])
+        # ww1 = []
+        # ww2 = []
+        # [ww1.append(str(x)) for x in w1]
+        # [ww2.append(str(x)) for x in w2]
+        # writer_final_weight.write("\t".join(ww1) + "\n")
+        # writer_final_weight.write("\t".join(ww2))
         for v in self.var_reward:
             writer_var_reward.write(str(v) + "\n")
         writer_var_reward.close()
-        writer_final_weight.close()
-        writer_weight_update.close()
+        # writer_final_weight.close()
+        # writer_weight_update.close()
         writer_avg_reward.close()
 
 

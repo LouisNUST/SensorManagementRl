@@ -25,8 +25,8 @@ class OTPSimulator:
                 tracker.update_states(agent.get_current_location(), environment.get_last_bearing_measurement())
                 current_state = self._create_current_state(tracker, agent, environment.get_last_bearing_measurement())
                 current_state = self._normalize_state(current_state, environment)
-                current_state = featurizer.transform(current_state)
-                current_state = list(current_state[0])
+                if featurizer is not None:
+                    current_state = featurizer.transform(current_state)
                 for x in current_state:
                     if x > 1 or x < -1:
                         episode.is_valid = False
@@ -41,7 +41,9 @@ class OTPSimulator:
                 episode_step_counter += 1
 
             if episode.is_valid:
+                print("episode valid; updating params...")
                 condition = agent.update_parameters(episode_counter, episode.discounted_return, episode.states)
+                print("(done updating params)")
 
                 if condition:
                     simulation.rewards.append(sum(episode.reward))
@@ -50,7 +52,7 @@ class OTPSimulator:
                         simulation_metrics.save_rewards(episode_counter, simulation.rewards)
                         simulation.rewards = []
                     episode_counter += 1
-                    simulation_metrics.save_weights(agent.get_weights())
+                    # simulation_metrics.save_weights(agent.get_weights())
 
     def _create_current_state(self, tracker, agent, last_bearing_measurement):
         # create current state s(t): target_state + sensor_state + bearing measurement + range
@@ -99,7 +101,7 @@ class _OTPSimulationEpisode:
 
     def update_reward(self, simulation, tracker):
         unnormalized_uncertainty = np.sum(tracker.get_estimation_error_covariance_matrix().diagonal())
-        #reward: see if the uncertainy has decayed or it has gone below a certain value
+        # reward: see if the uncertainty has decayed or if it has gone below a certain value
         self.uncertainty.append((1.0/tracker.get_max_uncertainty()) * unnormalized_uncertainty)
         if len(self.uncertainty) < simulation.window_size + simulation.window_lag:
             self.reward.append(0)

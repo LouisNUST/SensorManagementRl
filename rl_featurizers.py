@@ -19,4 +19,5 @@ class RBFFeaturizer:
         self._featurizer.fit(np.array(list_of_states))  # Use this featurizer for normalization
 
     def transform(self, current_state):
-        return self._featurizer.transform(np.array(current_state).reshape(1, len(current_state)))
+        transformed = self._featurizer.transform(np.array(current_state).reshape(1, len(current_state)))
+        return list(transformed[0])
