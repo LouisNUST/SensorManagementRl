@@ -33,6 +33,9 @@ class OTPSimulator:
                 # update the location of sensor based on the current state
                 agent.update_location(np.array(current_state))
                 episode.states.append(current_state)
+                # episode.true_target_locations.append(target.get_current_location())
+                # episode.target_location_estimates.append(tracker.get_target_state_estimate()[0:2].reshape(2))
+                # episode.update_reward_by_location_mse()
                 episode.update_reward(simulation, tracker)
                 episode.update_discounted_return()
                 episode_metrics.save(episode_step_counter, tracker, target)
@@ -98,6 +101,19 @@ class _OTPSimulationEpisode:
         self.reward = []
         self.uncertainty = []
         self.states = []
+        self.true_target_locations = []
+        self.target_location_estimates = []
+
+    def update_reward_by_location_mse(self):
+        if len(self.true_target_locations) < 2:
+            self.reward.append(0)
+        else:
+            prev_mean_squared_error = ((self.target_location_estimates[-2] - self.true_target_locations[-2]) ** 2).mean()
+            current_mean_squared_error = ((self.target_location_estimates[-1] - self.true_target_locations[-1]) ** 2).mean()
+            if current_mean_squared_error < prev_mean_squared_error:
+                self.reward.append(1)
+            else:
+                self.reward.append(0)
 
     def update_reward(self, simulation, tracker):
         unnormalized_uncertainty = np.sum(tracker.get_estimation_error_covariance_matrix().diagonal())

@@ -21,6 +21,7 @@ class ParameterizedPolicyOTPSensor:
         self._sensor_actions = []
 
     def update_location(self, featurized_system_state):
+        # Gaussian policy
         delta = np.random.normal(self._weights.dot(featurized_system_state), self._sigma)
         self._sensor_actions.append(delta)
         new_x = self._current_location[0] + delta[0]
@@ -66,22 +67,19 @@ class NeuralNetPolicyOTPSensor:
         self._out = tf.matmul(self._h2, self._W3) + self._b3
 
         self._optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate, decay=0.9)
-        self._taken_actions = tf.placeholder(tf.float32, (None, 2), name="taken_actions")
         self._discounted_rewards = tf.placeholder(tf.float32, (None,), name="discounted_rewards")
 
-        dist = tf.contrib.distributions.Normal(loc=self._out, scale=[1.])
-        sample = dist.sample()
+        # the policy gradient is: grad log pi(s);
+        #   we use -log pi(s) here because we want to maximize J, but we're doing minimization here
+        self._loss = -tf.log(self._out) * self._discounted_rewards
 
-        # self._loss = tf.losses.mean_squared_error(labels=self._taken_actions, predictions=sample)
-        # self._loss = -dist.log_prob(sample) * self._taken_actions
-        self._loss = dist.log_prob(sample) - dist.log_prob(self._taken_actions)
+        self._train_op = self._optimizer.minimize(self._loss)
 
-        self._gradients = self._optimizer.compute_gradients(self._loss)
-        # compute policy gradients
-        for i, (grad, var) in enumerate(self._gradients):
-            if grad is not None:
-                self._gradients[i] = (grad * self._discounted_rewards, var)
-        self._train_op = self._optimizer.apply_gradients(self._gradients)
+        # gradients, variables = zip(*self._optimizer.compute_gradients(self._loss))
+        # gradients = [
+        #     None if gradient is None else tf.clip_by_norm(gradient, 1.0)
+        #     for gradient in gradients]
+        # self._train_op = self._optimizer.apply_gradients(zip(gradients, variables))
 
         self._sess.run(tf.global_variables_initializer())
 
@@ -98,9 +96,8 @@ class NeuralNetPolicyOTPSensor:
         self._sensor_actions = []
 
     def update_location(self, system_state):
-        logits = self._sess.run(self._out, feed_dict={self._states: np.reshape(system_state, (1, self._num_input))})
-
-        delta = np.random.normal(logits, self._sigma)
+        # deterministic policy
+        delta = self._sess.run(self._out, feed_dict={self._states: np.reshape(system_state, (1, self._num_input))})
 
         self._sensor_actions.append(delta)
         new_x = self._current_location[0] + delta[0][0]
@@ -116,18 +113,15 @@ class NeuralNetPolicyOTPSensor:
         return []  # TODO for now
 
     def update_parameters(self, iteration, discounted_return, episode_states):
-        episode_actions = self._sensor_actions
         N = len(episode_states)
         for t in range(N-1):
             # prepare inputs
             states  = np.array([episode_states[t]])
-            actions = np.array(episode_actions[t])
             rewards = np.array([discounted_return[t]])
 
             # perform one update of training
             self._sess.run([self._train_op], feed_dict={
-                self._states:             states,
-                self._taken_actions:      actions,
+                self._states: states,
                 self._discounted_rewards: rewards
             })
         return True
