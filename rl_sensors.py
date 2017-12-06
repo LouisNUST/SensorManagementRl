@@ -71,15 +71,9 @@ class NeuralNetPolicyOTPSensor:
 
         # the policy gradient is: grad log pi(s);
         #   we use -log pi(s) here because we want to maximize J, but we're doing minimization here
-        self._loss = -tf.log(self._out) * self._discounted_rewards
+        self._loss = -tf.log(tf.clip_by_value(self._out, 1e-5, 1.0)) * self._discounted_rewards
 
         self._train_op = self._optimizer.minimize(self._loss)
-
-        # gradients, variables = zip(*self._optimizer.compute_gradients(self._loss))
-        # gradients = [
-        #     None if gradient is None else tf.clip_by_norm(gradient, 1.0)
-        #     for gradient in gradients]
-        # self._train_op = self._optimizer.apply_gradients(zip(gradients, variables))
 
         self._sess.run(tf.global_variables_initializer())
 
