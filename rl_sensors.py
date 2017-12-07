@@ -162,7 +162,9 @@ class TFNeuralNetStochasticPolicyOTPSensor:
         self._taken_actions = tf.placeholder(tf.float32, (None, 2), name="taken_actions")
 
         # we'll get the policy gradient by using -log(pdf), where pdf is the PDF of the Normal distribution
-        self._score = -tf.log(tf.sqrt(1/(2 * np.pi * sigma**2)) * tf.exp(-(self._taken_actions - self._mu)**2/(2 * sigma**2)))
+        # self._score = -tf.log(tf.sqrt(1/(2 * np.pi * sigma**2)) * tf.exp(-(self._taken_actions - self._mu)**2/(2 * sigma**2)))
+        normal_dist = tf.contrib.distributions.Normal(self._mu, [1.])
+        self._score = -normal_dist.log_prob(self._taken_actions)
 
         self._loss = tf.reduce_mean(self._score)
 
