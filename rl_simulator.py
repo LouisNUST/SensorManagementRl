@@ -33,10 +33,8 @@ class OTPSimulator:
                 # update the location of sensor based on the current state
                 agent.update_location(np.array(current_state))
                 episode.states.append(current_state)
-                # episode.true_target_locations.append(target.get_current_location())
-                # episode.target_location_estimates.append(tracker.get_target_state_estimate()[0:2].reshape(2))
-                # episode.update_reward_by_location_mse()
-                episode.update_reward(simulation, tracker)
+                # episode.update_reward_by_location_mse(simulation, target, tracker)
+                episode.update_reward_by_uncertainty(simulation, tracker)
                 episode.update_discounted_return()
                 episode_metrics.save(episode_step_counter, tracker, target)
                 if episode_step_counter > self._episode_length:
@@ -101,21 +99,24 @@ class _OTPSimulationEpisode:
         self.reward = []
         self.uncertainty = []
         self.states = []
-        self.true_target_locations = []
-        self.target_location_estimates = []
+        self.location_mse = []
 
-    def update_reward_by_location_mse(self):
-        if len(self.true_target_locations) < 2:
+    def update_reward_by_location_mse(self, simulation, target, tracker):
+        true_target_location = target.get_current_location()
+        target_location_estimate = tracker.get_target_state_estimate()[0:2].reshape(2)
+        mse = self.mse(target_location_estimate, true_target_location)
+        self.location_mse.append(mse)
+        if len(self.location_mse) < simulation.window_size + simulation.window_lag:
             self.reward.append(0)
         else:
-            prev_mean_squared_error = ((self.target_location_estimates[-2] - self.true_target_locations[-2]) ** 2).mean()
-            current_mean_squared_error = ((self.target_location_estimates[-1] - self.true_target_locations[-1]) ** 2).mean()
-            if current_mean_squared_error < prev_mean_squared_error:
+            current_avg = np.mean(self.location_mse[-simulation.window_size:])
+            prev_avg = np.mean(self.location_mse[-(simulation.window_size + simulation.window_lag):-simulation.window_lag])
+            if current_avg < prev_avg:
                 self.reward.append(1)
             else:
                 self.reward.append(0)
 
-    def update_reward(self, simulation, tracker):
+    def update_reward_by_uncertainty(self, simulation, tracker):
         unnormalized_uncertainty = np.sum(tracker.get_estimation_error_covariance_matrix().diagonal())
         # reward: see if the uncertainty has decayed or if it has gone below a certain value
         self.uncertainty.append((1.0/tracker.get_max_uncertainty()) * unnormalized_uncertainty)
@@ -139,3 +140,6 @@ class _OTPSimulationEpisode:
         list_discount_vector = list(self.discount_vector)
         list_discount_vector.append(1)
         self.discount_vector = np.array(list_discount_vector)
+
+    def mse(self, x, y):
+        return ((x - y) ** 2).mean()
