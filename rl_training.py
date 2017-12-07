@@ -1,7 +1,7 @@
 from rl_simulator import OTPSimulator
 from rl_environment import OTPEnvironment
 from rl_featurizers import RBFFeaturizer
-from rl_sensors import ParameterizedPolicyOTPSensor, NeuralNetDeterministicPolicyOTPSensor, NeuralNetStochasticPolicyOTPSensor
+from rl_sensors import StochasticPolicyOTPSensor, TFNeuralNetDeterministicPolicyOTPSensor, TFNeuralNetStochasticPolicyOTPSensor, TFStochasticPolicyOTPSensor
 from rl_optimization import PolicyGradientParameterUpdater
 from rl_targets import ConstantVelocityTarget
 from rl_metrics import SimulationMetrics
@@ -30,15 +30,18 @@ if __name__ == "__main__":
     learning_rate = .001
 
     # featurizer = RBFFeaturizer(num_rbf_components=num_features, rbf_variance=rbf_variance)
-    # agent = ParameterizedPolicyOTPSensor(num_features=num_features,
-    #                                      parameter_updater=PolicyGradientParameterUpdater(learning_rate=learning_rate),
-    #                                      sigma=sensor_variance)
+    # agent = StochasticPolicyOTPSensor(num_features=num_features,
+    #                                   parameter_updater=PolicyGradientParameterUpdater(learning_rate=learning_rate),
+    #                                   sigma=sensor_variance)
 
     # featurizer = None
-    # agent = NeuralNetDeterministicPolicyOTPSensor(num_input=8, learning_rate=learning_rate)
+    # agent = TFNeuralNetDeterministicPolicyOTPSensor(num_input=8, learning_rate=learning_rate)
 
-    featurizer = None
-    agent = NeuralNetStochasticPolicyOTPSensor(num_input=8, learning_rate=learning_rate, sigma=sensor_variance)
+    # featurizer = None
+    # agent = TFNeuralNetStochasticPolicyOTPSensor(num_input=8, learning_rate=learning_rate, sigma=sensor_variance)
+
+    featurizer = RBFFeaturizer(num_rbf_components=num_features, rbf_variance=rbf_variance)
+    agent = TFStochasticPolicyOTPSensor(num_input=num_features, learning_rate=learning_rate, sigma=sensor_variance)
 
     environment = OTPEnvironment(bearing_variance=1E-2)
 
