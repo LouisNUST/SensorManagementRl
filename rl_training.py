@@ -42,8 +42,8 @@ if __name__ == "__main__":
     #                                                              init_exploration=0.5, final_exploration=0.0,
     #                                                              anneal_steps=50000)
 
-    # featurizer = None
-    # agent = TFNeuralNetStochasticPolicyOTPSensor(num_input=8, learning_rate=learning_rate, sigma=sensor_variance)
+    featurizer = None
+    agent = TFNeuralNetStochasticPolicyOTPSensor(num_input=8, learning_rate=1e-6, sigma=sensor_variance)
 
     # featurizer = RBFFeaturizer(num_rbf_components=num_features, rbf_variance=rbf_variance)
     # agent = TFStochasticPolicyOTPSensor(num_input=num_features, learning_rate=0.001, sigma=sensor_variance)
@@ -54,15 +54,15 @@ if __name__ == "__main__":
     #                                                  anneal_steps=50000)
 
     # featurizer = None
-    # agent = TFNeuralNetStochasticPolicyEpsilonGreedyOTPSensor(num_input=8,  learning_rate=learning_rate,
+    # agent = TFNeuralNetStochasticPolicyEpsilonGreedyOTPSensor(num_input=8,  learning_rate=1e-6,
     #                                                           sigma=sensor_variance, init_exploration=0.5,
     #                                                           final_exploration=0.0, anneal_steps=50000)
 
-    featurizer = None
-    agent = TFRecurrentStochasticPolicyOTPSensor(num_input=8, learning_rate=learning_rate, sigma=sensor_variance)
+    # featurizer = None
+    # agent = TFRecurrentStochasticPolicyOTPSensor(num_input=8, learning_rate=learning_rate, sigma=sensor_variance)
 
     # featurizer = None
-    # agent = TFNeuralNetStochasticPolicyStackingOTPSensor(num_input=8, learning_rate=.0001, sigma=sensor_variance)
+    # agent = TFNeuralNetStochasticPolicyStackingOTPSensor(num_input=8, learning_rate=1e-6, sigma=sensor_variance)
 
     environment = OTPEnvironment(bearing_variance=1E-2)
 

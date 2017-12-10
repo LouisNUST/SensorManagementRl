@@ -223,7 +223,7 @@ class TFNeuralNetDeterministicPolicyEpsilonGreedyOTPSensor:
 
 
 class TFNeuralNetStochasticPolicyOTPSensor:
-    def __init__(self, num_input, learning_rate=0.001, sigma=1):
+    def __init__(self, num_input, learning_rate=1e-6, sigma=1):
         self._sigma = sigma
         self._sess = tf.Session()
         self._states = tf.placeholder(tf.float32, (None, num_input), name="states")
@@ -485,7 +485,7 @@ class TFStochasticPolicyEpsilonGreedyOTPSensor:
 
 
 class TFNeuralNetStochasticPolicyEpsilonGreedyOTPSensor:
-    def __init__(self, num_input, learning_rate=0.001, sigma=1, init_exploration=0.5, final_exploration=0.0, anneal_steps=10000):
+    def __init__(self, num_input, learning_rate=1e-6, sigma=1, init_exploration=0.5, final_exploration=0.0, anneal_steps=10000):
         self._sigma = sigma
 
         # exploration parameters
@@ -694,7 +694,7 @@ class TFRecurrentStochasticPolicyOTPSensor:
 
 
 class TFNeuralNetStochasticPolicyStackingOTPSensor:
-    def __init__(self, num_input, learning_rate=0.001, sigma=1):
+    def __init__(self, num_input, learning_rate=1e-6, sigma=1):
         self._sigma = sigma
 
         self._state_dim = 5
