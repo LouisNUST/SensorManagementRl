@@ -49,7 +49,7 @@ class OTPSimulator:
                 if condition:
                     simulation.rewards.append(sum(episode.reward))
                     if episode_counter % 100 == 0 and episode_counter > 0:
-                        print(episode_counter, np.mean(simulation.rewards))
+                        print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
                         simulation_metrics.save_rewards(episode_counter, simulation.rewards)
                         simulation.rewards = []
                     episode_counter += 1
