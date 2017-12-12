@@ -43,7 +43,7 @@ if __name__ == "__main__":
     #                                                              anneal_steps=50000)
 
     featurizer = None
-    agent = TFNeuralNetStochasticPolicyOTPSensor(num_input=8, learning_rate=1e-6, sigma=sensor_variance)
+    agent = TFNeuralNetStochasticPolicyOTPSensor(num_input=8, init_learning_rate=1e-6)
 
     # featurizer = RBFFeaturizer(num_rbf_components=num_features, rbf_variance=rbf_variance)
     # agent = TFStochasticPolicyOTPSensor(num_input=num_features, learning_rate=0.001, sigma=sensor_variance)

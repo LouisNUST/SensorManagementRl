@@ -3,6 +3,9 @@ out/
 /.idea
 *.iml
 
+sampled_states
+plotdata.txt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
