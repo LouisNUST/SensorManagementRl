@@ -142,7 +142,8 @@ class TFRandomFeaturesStochasticPolicyAgent:
 
 
 class TFNeuralNetStochasticPolicyAgent:
-    def __init__(self, env, num_input, init_learning_rate=5e-6, min_learning_rate=1e-9, learning_rate_N_max=2000):
+    def __init__(self, env, num_input, init_learning_rate=5e-6, min_learning_rate=1e-9, learning_rate_N_max=2000,
+                 shuffle=True, batch_size=1):
         self._env = env
         self._sess = tf.Session()
         self._states = tf.placeholder(tf.float32, (None, num_input), name="states")
@@ -183,21 +184,19 @@ class TFNeuralNetStochasticPolicyAgent:
 
         self._optimizer = tf.train.GradientDescentOptimizer(learning_rate=self._learning_rate)
 
-        self._discounted_rewards = tf.placeholder(tf.float32, (None,), name="discounted_rewards")
+        self._discounted_rewards = tf.placeholder(tf.float32, (None, 1), name="discounted_rewards")
         self._taken_actions = tf.placeholder(tf.float32, (None, 1), name="taken_actions")
 
         # we'll get the policy gradient by using -log(pdf), where pdf is the PDF of the Normal distribution
-        self._loss = -tf.log(tf.sqrt(1/(2 * np.pi * self._sigma**2)) * tf.exp(-(self._taken_actions - self._mu)**2/(2 * self._sigma**2)))
+        self._loss = -tf.log(tf.sqrt(1/(2 * np.pi * self._sigma**2)) * tf.exp(-(self._taken_actions - self._mu)**2/(2 * self._sigma**2))) * self._discounted_rewards
 
-        self._gradients = self._optimizer.compute_gradients(self._loss)
-        for i, (grad, var) in enumerate(self._gradients):
-            if grad is not None:
-                self._gradients[i] = (grad * self._discounted_rewards, var)
-        self._train_op = self._optimizer.apply_gradients(self._gradients)
+        self._train_op = self._optimizer.minimize(self._loss)
 
         self._sess.run(tf.global_variables_initializer())
 
         self._num_input = num_input
+        self._shuffle = shuffle
+        self._batch_size = batch_size
         # rollout buffer
         self._state_buffer  = []
         self._reward_buffer = []
@@ -241,21 +240,36 @@ class TFNeuralNetStochasticPolicyAgent:
         learning_rate = self._gen_learning_rate(iteration, l_max=self._init_learning_rate,
                                                 l_min=self._min_learning_rate, N_max=self._learning_rate_N_max)
 
+        all_samples = []
         for t in range(N-1):
+            state  = np.reshape(np.array(self._state_buffer[t]), self._num_input)
+            action = self._action_buffer[t][0]
+            reward = [discounted_rewards[t]]
+            sample = [state, action, reward]
+            all_samples.append(sample)
+        if self._shuffle:
+            np.random.shuffle(all_samples)
 
-            # prepare inputs
-            states  = np.reshape(np.array(self._state_buffer[t]), (1, self._num_input))
-            action = np.array(self._action_buffer[t])
-            rewards = np.array([discounted_rewards[t]])
+        batches = list(self._minibatches(all_samples, batch_size=self._batch_size))
 
+        for b in range(len(batches)):
+            batch = batches[b]
+            states = [row[0] for row in batch]
+            actions = [row[1] for row in batch]
+            rewards = [row[2] for row in batch]
             # perform one update of training
             self._sess.run([self._train_op], {
                 self._states:             states,
-                self._taken_actions:      action,
+                self._taken_actions:      actions,
                 self._discounted_rewards: rewards,
                 self._learning_rate:      learning_rate
             })
+
         self._clean_up()
+
+    def _minibatches(self, samples, batch_size):
+        for i in range(0, len(samples), batch_size):
+            yield samples[i:i + batch_size]
 
     def _gen_learning_rate(self, iteration, l_max, l_min, N_max):
         if iteration > N_max:
