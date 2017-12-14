@@ -9,7 +9,7 @@ from sklearn.kernel_approximation import RBFSampler
 
 
 class TFRandomFeaturesStochasticPolicyAgent:
-    def __init__(self, env, num_input=100, init_learning_rate=0.0001):
+    def __init__(self, env, num_input=100, init_learning_rate=1e-4, min_learning_rate=1e-9, learning_rate_N_max=2000):
         # Feature Preprocessing: Normalize to zero mean and unit variance
         # We use a few samples from the observation space to do this
         self._env = env
@@ -31,6 +31,8 @@ class TFRandomFeaturesStochasticPolicyAgent:
         self._states = tf.placeholder(tf.float32, (None, num_input), name="states")
 
         self._init_learning_rate = init_learning_rate
+        self._min_learning_rate = min_learning_rate
+        self._learning_rate_N_max = learning_rate_N_max
         self._learning_rate = tf.placeholder(tf.float32, shape=[])
 
         # policy parameters
@@ -107,7 +109,8 @@ class TFRandomFeaturesStochasticPolicyAgent:
         discounted_rewards -= np.mean(self._all_rewards)
         discounted_rewards /= np.std(self._all_rewards)
 
-        learning_rate = self._gen_learning_rate(iteration, l_max=self._init_learning_rate, l_min=1E-9, N_max=2000)
+        learning_rate = self._gen_learning_rate(iteration, l_max=self._init_learning_rate,
+                                                l_min=self._min_learning_rate, N_max=self._learning_rate_N_max)
 
         for t in range(N-1):
 
@@ -139,12 +142,14 @@ class TFRandomFeaturesStochasticPolicyAgent:
 
 
 class TFNeuralNetStochasticPolicyAgent:
-    def __init__(self, env, num_input, init_learning_rate=1e-6):
+    def __init__(self, env, num_input, init_learning_rate=5e-6, min_learning_rate=1e-9, learning_rate_N_max=2000):
         self._env = env
         self._sess = tf.Session()
         self._states = tf.placeholder(tf.float32, (None, num_input), name="states")
 
         self._init_learning_rate = init_learning_rate
+        self._min_learning_rate = min_learning_rate
+        self._learning_rate_N_max = learning_rate_N_max
         self._learning_rate = tf.placeholder(tf.float32, shape=[])
 
         # policy parameters
@@ -163,7 +168,7 @@ class TFNeuralNetStochasticPolicyAgent:
                                    initializer=tf.random_normal_initializer(stddev=0.1))
         self._b2 = tf.get_variable("b2", [1000],
                                    initializer=tf.constant_initializer(0))
-        # self._phi = tf.matmul(self._h1, self._W2) + self._b2
+        # self._phi = tf.nn.relu(tf.matmul(self._h1, self._W2) + self._b2)
         self._h2 = tf.nn.tanh(tf.matmul(self._h1, self._W2) + self._b2)
 
         self._W3 = tf.get_variable("W3", [1000, 100],
@@ -233,7 +238,8 @@ class TFNeuralNetStochasticPolicyAgent:
         discounted_rewards -= np.mean(self._all_rewards)
         discounted_rewards /= np.std(self._all_rewards)
 
-        learning_rate = self._gen_learning_rate(iteration, l_max=self._init_learning_rate, l_min=1E-10, N_max=2000)
+        learning_rate = self._gen_learning_rate(iteration, l_max=self._init_learning_rate,
+                                                l_min=self._min_learning_rate, N_max=self._learning_rate_N_max)
 
         for t in range(N-1):
 
