@@ -1,7 +1,6 @@
 import tensorflow as tf
 import numpy as np
 import sklearn
-import random
 
 import sklearn.pipeline
 
@@ -84,7 +83,7 @@ class TFRandomFeaturesStochasticPolicyAgent:
         })
         action = np.random.normal(mu, sigma)
         action = np.clip(action, self._env.action_space.low[0], self._env.action_space.high[0])
-        return action
+        return action, sigma
 
     def store_rollout(self, state, action, reward):
         self._action_buffer.append(action)
@@ -213,7 +212,7 @@ class TFNeuralNetStochasticPolicyAgent:
         })
         action = np.random.normal(mu, sigma)
         action = np.clip(action, self._env.action_space.low[0], self._env.action_space.high[0])
-        return action
+        return action, sigma
 
     def store_rollout(self, state, action, reward):
         self._action_buffer.append(action)
