@@ -36,22 +36,26 @@ class OTPSimulator:
                 # episode.update_reward_by_location_mse(simulation, target, tracker)
                 episode.update_reward_by_uncertainty(simulation, tracker)
                 episode.update_discounted_return()
-                episode_metrics.save(episode_step_counter, tracker, target)
+                episode_metrics.save(episode_step_counter, tracker, target, agent)
                 if episode_step_counter > self._episode_length:
                     break
                 episode_step_counter += 1
 
             if episode.is_valid:
-                print("episode valid; updating params...")
                 condition = agent.update_parameters(episode_counter, episode.discounted_return, episode.states)
-                print("(done updating params)")
 
                 if condition:
                     simulation.rewards.append(sum(episode.reward))
+                    print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
+                    simulation.sigmas.append(np.mean(agent.get_sigmas(), axis=0))
+                    simulation_metrics.save_raw_reward(episode_counter, sum(episode.reward))
+                    simulation_metrics.save_locations(episode_counter, episode_metrics)
                     if episode_counter % 100 == 0 and episode_counter > 0:
-                        print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
+                        # print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
                         simulation_metrics.save_rewards(episode_counter, simulation.rewards)
+                        simulation_metrics.save_sigmas(episode_counter, simulation.sigmas)
                         simulation.rewards = []
+                        simulation.sigmas = []
                     episode_counter += 1
                     # simulation_metrics.save_weights(agent.get_weights())
 
@@ -88,6 +92,7 @@ class _OTPSimulation:
         self.window_size = window_size
         self.window_lag = window_lag
         self.rewards = []
+        self.sigmas = []
 
 
 class _OTPSimulationEpisode:

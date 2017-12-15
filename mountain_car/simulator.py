@@ -14,8 +14,10 @@ num_actions = env.action_space
 MAX_EPISODES = 10000
 MAX_STEPS = 1000
 
-agent = TFNeuralNetStochasticPolicyAgent(env, num_input=2, init_learning_rate=5e-6, min_learning_rate=1e-9,
-                                         learning_rate_N_max=2000, shuffle=True, batch_size=1)
+agent = TFNeuralNetStochasticPolicyAgent(env, num_input=2, init_learning_rate=1e-5, min_learning_rate=1e-9,
+                                         learning_rate_N_max=5000, shuffle=True, batch_size=1)
+# agent = TFRecurrentStochasticPolicyAgent(env, num_input=2, init_learning_rate=5e-3, min_learning_rate=1e-9,
+#                                          learning_rate_N_max=3000, shuffle=True, batch_size=1)
 # agent = TFRandomFeaturesStochasticPolicyAgent(env, init_learning_rate=1e-4, min_learning_rate=1e-9, learning_rate_N_max=2000)
 
 episode_history = deque(maxlen=100)

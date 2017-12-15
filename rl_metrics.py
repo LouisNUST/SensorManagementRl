@@ -1,74 +1,55 @@
-import errno
-
-import matplotlib.pyplot as plt
 import numpy as np
-import os
 
-
-def mkdirs(file_name):
-    if not os.path.exists(os.path.dirname(file_name)):
-        try:
-            os.makedirs(os.path.dirname(file_name))
-        except OSError as exc:
-            if exc.errno != errno.EEXIST:
-                raise
-
-
-def open_file_for_writing(file_name, mode='w'):
-    mkdirs(file_name)
-    return open(file_name, mode)
+from file_helper import *
 
 
 class SimulationMetrics:
-    def __init__(self, base_path):
+    def __init__(self, base_path, filename):
         self._base_path = base_path
-        self.weight_saver1 = []
-        self.weight_saver2 = []
-        self.avg_reward = []
-        self.var_reward = []
-        self.iteration = []
+        avg_reward_filename = self._base_path + "avg_reward_" + filename
+        var_reward_filename = self._base_path + "var_reward_" + filename
+        raw_reward_filename = self._base_path + "raw_reward_" + filename
+        locations_filename = self._base_path + "locations_" + filename
+        sensor_sigmas_filename = self._base_path + "sensor_sigmas_" + filename
+        silent_remove(avg_reward_filename)
+        silent_remove(var_reward_filename)
+        silent_remove(raw_reward_filename)
+        silent_remove(locations_filename)
+        silent_remove(sensor_sigmas_filename)
+        self._writer_avg_reward = open_file_for_writing(avg_reward_filename, mode="a")
+        self._writer_var_reward = open_file_for_writing(var_reward_filename, mode="a")
+        self._writer_raw_reward = open_file_for_writing(raw_reward_filename, mode="a")
+        self._writer_locations = open_file_for_writing(locations_filename, mode="a")
+        self._writer_sigmas = open_file_for_writing(sensor_sigmas_filename, mode="a")
 
-    def plot(self):
-        plt.plot(self.iteration, self.avg_reward, 'ko-', linewidth=3)
-        plt.xlabel("iteration", size=15)
-        plt.ylabel("avg. reward", size=15)
-        plt.grid(True)
-        plt.savefig(self._base_path + "avg-reward.png")
+    def save_raw_reward(self, episode_number, reward):
+        self._writer_raw_reward.write("%s,%s\n" % (episode_number, reward))
+        self._flush(self._writer_raw_reward)
 
-    def save_weights(self, weights):
-        self.weight_saver1.append(weights[0][0])
-        self.weight_saver2.append(weights[0][1])
+    def save_rewards(self, episode_number, rewards):
+        self._writer_avg_reward.write("%s,%s\n" % (episode_number, np.mean(rewards)))
+        self._flush(self._writer_avg_reward)
+        self._writer_var_reward.write("%s,%s\n" % (episode_number, np.var(rewards)))
+        self._flush(self._writer_var_reward)
 
-    def save_rewards(self, iteration, rewards):
-        self.iteration.append(iteration)
-        self.avg_reward.append(np.mean(rewards))
-        self.var_reward.append(np.var(rewards))
+    def save_locations(self, episode_number, episode_metrics):
+        for i in range(len(episode_metrics.iteration)):
+            self._writer_locations.write("%s,%s,%s,%s,%s,%s\n" % (episode_number, episode_metrics.iteration[i],
+                                                                  episode_metrics.sensor_x[i], episode_metrics.sensor_y[i],
+                                                                  episode_metrics.target_x_truth[i], episode_metrics.target_y_truth[i]))
+        self._flush(self._writer_locations)
 
-    def write_metrics_to_files(self, num_features, rbf_variance, sigma, learning_rate, weights):
-        post_fix = "_" + str(num_features) + "_" + str(rbf_variance) + "_" + str(sigma) + "_" + str(learning_rate)+".txt"
-        writer_avg_reward = open_file_for_writing(self._base_path + "avg_reward" + post_fix)
-        writer_var_reward = open_file_for_writing(self._base_path + "var_reward" + post_fix)
-        # writer_weight_update = open_file_for_writing(self._base_path + "weight_update" + post_fix)
-        # writer_final_weight = open_file_for_writing(self._base_path + "final_weight" + post_fix)
+    def save_sigmas(self, episode_number, sigmas):
+        self._writer_sigmas.write("%s,%s\n" % (episode_number, np.mean(sigmas, axis=0)))
+        self._flush(self._writer_sigmas)
 
-        for r in self.avg_reward:
-            writer_avg_reward.write(str(r) + "\n")
-        # for w in self.weight_saver1:
-        #     writer_weight_update.write(str(w) + "\n")
-        # w1 = list(weights[0])
-        # w2 = list(weights[1])
-        # ww1 = []
-        # ww2 = []
-        # [ww1.append(str(x)) for x in w1]
-        # [ww2.append(str(x)) for x in w2]
-        # writer_final_weight.write("\t".join(ww1) + "\n")
-        # writer_final_weight.write("\t".join(ww2))
-        for v in self.var_reward:
-            writer_var_reward.write(str(v) + "\n")
-        writer_var_reward.close()
-        # writer_final_weight.close()
-        # writer_weight_update.close()
-        writer_avg_reward.close()
+    def _flush(self, f):
+        f.flush()
+        os.fsync(f)
+
+    def close_files(self):
+        self._writer_avg_reward.close()
+        self._writer_var_reward.close()
 
 
 class EpisodeMetrics:
@@ -77,24 +58,26 @@ class EpisodeMetrics:
         self.y_est = []
         self.x_vel_est = []
         self.y_vel_est = []
-        self.x_truth = []
-        self.y_truth = []
+        self.target_x_truth = []
+        self.target_y_truth = []
         self.x_vel_truth = []
         self.y_vel_truth = []
         self.vel_error = []
         self.pos_error = []
         self.iteration = []
         self.innovation = []
+        self.sensor_x = []
+        self.sensor_y = []
 
-    def save(self, iteration, tracker, target):
+    def save(self, iteration, tracker, target, sensor):
         estimate = tracker.get_target_state_estimate()
         truth = target.get_current_location()
         self.x_est.append(estimate[0])
         self.y_est.append(estimate[1])
         self.x_vel_est.append(estimate[2])
         self.y_vel_est.append(estimate[3])
-        self.x_truth.append(truth[0])
-        self.y_truth.append(truth[1])
+        self.target_x_truth.append(truth[0])
+        self.target_y_truth.append(truth[1])
         self.x_vel_truth.append(target.get_current_velocity()[0])
         self.y_vel_truth.append(target.get_current_velocity()[1])
         self.vel_error.append(np.linalg.norm(estimate[2:4] - np.array([target.get_current_velocity()[0], target.get_current_velocity()[1]]).reshape(2, 1)))
@@ -102,3 +85,5 @@ class EpisodeMetrics:
         normalized_innovation = (tracker.get_innovation_list()[-1]) / tracker.get_innovation_var()[-1]
         self.innovation.append(normalized_innovation[0])
         self.iteration.append(iteration)
+        self.sensor_x.append(sensor.get_current_location()[0])
+        self.sensor_y.append(sensor.get_current_location()[1])
