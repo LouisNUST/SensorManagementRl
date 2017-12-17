@@ -13,3 +13,4 @@ var
 *.swp
 .DS_Store
 sampled_states
+out

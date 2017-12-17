@@ -12,9 +12,9 @@ if __name__ == "__main__":
 
     environment = OTPEnvironment(bearing_variance=1E-2)
 
-    simulator = OTPSimulator(max_num_episodes=50000, episode_length=2000)
+    simulator = OTPSimulator(max_num_episodes=3000, episode_length=2000)
 
-    simulation_metrics = SimulationMetrics(base_path="/output/sensor_rl/", filename=str(agent) + '.txt')
+    simulation_metrics = SimulationMetrics(base_path="/output/", filename=str(agent) + '.txt')
 
     simulator.simulate(environment, agent, featurizer, simulation_metrics=simulation_metrics,
                        target_factory=lambda: ConstantVelocityTarget())
