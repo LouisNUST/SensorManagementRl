@@ -42,9 +42,9 @@ class OTPSimulator:
                 episode_step_counter += 1
 
             if episode.is_valid:
-                print("episode valid; updating params...")
+                #print("episode valid; updating params...")
                 condition = agent.update_parameters(episode_counter, episode.discounted_return, episode.states)
-                print("(done updating params)")
+                print("episode:"+str(episode_counter)+" (done updating params)")
 
                 if condition:
                     simulation.rewards.append(sum(episode.reward))
@@ -101,6 +101,12 @@ class _OTPSimulationEpisode:
         self.states = []
         self.location_mse = []
 
+    def linear_lsq(self,batch):
+        x = np.array(range(0, len(batch)))
+        A = np.vstack([x, np.ones(len(x))]).T
+        m, c = np.linalg.lstsq(A, batch)[0]
+        return (m, c)
+
     def update_reward_by_location_mse(self, simulation, target, tracker):
         true_target_location = target.get_current_location()
         target_location_estimate = tracker.get_target_state_estimate()[0:2].reshape(2)
@@ -120,14 +126,21 @@ class _OTPSimulationEpisode:
         unnormalized_uncertainty = np.sum(tracker.get_estimation_error_covariance_matrix().diagonal())
         # reward: see if the uncertainty has decayed or if it has gone below a certain value
         self.uncertainty.append((1.0/tracker.get_max_uncertainty()) * unnormalized_uncertainty)
-        if len(self.uncertainty) < simulation.window_size + simulation.window_lag:
+        #self.reward.append(2.0/(1+np.exp(10*self.uncertainty[-1])))
+
+        if len(self.uncertainty) < self.window_size + self.window_lag:
             self.reward.append(0)
         else:
-            current_avg = np.mean(self.uncertainty[-simulation.window_size:])
-            prev_avg = np.mean(self.uncertainty[-(simulation.window_size + simulation.window_lag):-simulation.window_lag])
-            if current_avg < prev_avg or self.uncertainty[-1] < .1:
+            current_avg = np.mean(self.uncertainty[-self.window_size:])
+            prev_avg = np.mean(self.uncertainty[-(self.window_size + self.window_lag):-self.window_lag])
+            # if current_avg<prev_avg:
+            slope, c = self.linear_lsq(self.uncertainty[-100:])
+            if current_avg<prev_avg or (slope < 1E-4 and c < .1):
+                # if current_avg_error<prev_avg_erroror or pos_error[-1]<3:
+                # if current_avg < prev_avg:
                 self.reward.append(1)
             else:
+                # reward.append(2.0 / (1 + np.exp(100 * current_avg)))
                 self.reward.append(0)
 
     def update_discounted_return(self):

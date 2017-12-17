@@ -61,14 +61,14 @@ class EKFTracker:
 
     def predicted_state(self, sensor_state, measurement):
         Q = np.eye(2)
-        Q[0, 0] = .1
-        Q[1, 1] = .1
+        Q[0, 0] = 1
+        Q[1, 1] = 1
         predicted_noise_covariance = (self._B.dot(Q)).dot(self._B.transpose())
         self._x_k_km1 = self._A.dot(self._x_k_k)
         self._p_k_km1 = (self._A.dot(self._p_k_k)).dot(self._A.transpose()) + predicted_noise_covariance
         predicted_measurement, measurement_vector = self.linearized_predicted_measurement(sensor_state)
         self._meas_vec.append(measurement_vector)
-        self._S_k = (measurement_vector.dot(self._p_k_km1)).dot(measurement_vector.transpose()) + self._bearing_var
+        self._S_k = (measurement_vector.dot(self._p_k_km1)).dot(measurement_vector.transpose()) + self._bearing_var**2
         self._innovation_list.append(measurement - predicted_measurement)
         self._innovation_var.append(self._S_k)
 
