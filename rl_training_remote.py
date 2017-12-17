@@ -7,8 +7,9 @@ from rl_targets import ConstantVelocityTarget
 if __name__ == "__main__":
 
     featurizer = None
-    agent = TFNeuralNetStochasticPolicyOTPSensor(num_input=8, init_learning_rate=1e-6, min_learning_rate=1e-10,
-                                                 learning_rate_N_max=10000, shuffle=True, batch_size=1)
+    agent = TFNeuralNetStochasticPolicyStackingOTPSensor(state_dim=5, num_states=5, init_learning_rate=1e-8,
+                                                         min_learning_rate=1e-12, learning_rate_N_max=10000,
+                                                         shuffle=True, batch_size=1)
 
     environment = OTPEnvironment(bearing_variance=1E-2)
 

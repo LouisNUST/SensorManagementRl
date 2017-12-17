@@ -44,14 +44,16 @@ if __name__ == "__main__":
     # featurizer = RBFFeaturizer(num_rbf_components=num_features, rbf_variance=rbf_variance)
     # agent = TFStochasticPolicyOTPSensor(num_input=num_features, init_learning_rate=0.001)
 
-    featurizer = RBFFeaturizer(num_rbf_components=num_features, rbf_variance=rbf_variance)
-    agent = TFStochasticPolicyWithSigmaOTPSensor(num_input=num_features, init_learning_rate=0.0005)
+    # featurizer = RBFFeaturizer(num_rbf_components=num_features, rbf_variance=rbf_variance)
+    # agent = TFStochasticPolicyWithSigmaOTPSensor(num_input=num_features, init_learning_rate=0.0005)
 
     # featurizer = None
     # agent = TFRecurrentStochasticPolicyOTPSensor(num_input=8, learning_rate=learning_rate, sigma=sensor_variance, n_hidden=50)
 
-    # featurizer = None
-    # agent = TFNeuralNetStochasticPolicyStackingOTPSensor(num_input=8, learning_rate=1e-6, sigma=sensor_variance)
+    featurizer = None
+    agent = TFNeuralNetStochasticPolicyStackingOTPSensor(state_dim=3, num_states=5, init_learning_rate=1e-8,
+                                                         min_learning_rate=1e-12, learning_rate_N_max=10000,
+                                                         shuffle=True, batch_size=1)
 
     environment = OTPEnvironment(bearing_variance=1E-2)
 
