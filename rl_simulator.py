@@ -135,7 +135,7 @@ class _OTPSimulationEpisode:
             prev_avg = np.mean(self.uncertainty[-(simulation.window_size + simulation.window_lag):-simulation.window_lag])
             # if current_avg<prev_avg:
             slope, c = self.linear_lsq(self.uncertainty[-100:])
-            if current_avg<prev_avg or (slope < 1E-4 and c < .1):
+            if self.uncertainty[-1]<self.uncertainty[-2] or (slope < 1E-4 and c < .1):
                 # if current_avg_error<prev_avg_erroror or pos_error[-1]<3:
                 # if current_avg < prev_avg:
                 self.reward.append(1)
