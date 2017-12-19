@@ -52,9 +52,9 @@ class EKFTracker:
 
     def linearized_predicted_measurement(self,sensor_state):
         sensor_state = np.array(sensor_state).reshape(len(sensor_state),1)
-        measurement_vector = self.get_linearized_measurment_vector(self.x_k_km1,sensor_state)#Linearize the measurement model
+        measurement_vector = self.get_linearized_measurment_vector(self._x_k_km1,sensor_state)#Linearize the measurement model
         #predicted_measurement = measurement_vector.dot(np.array(self.x_k_km1))
-        predicted_measurement =  np.arctan2(self.x_k_km1[1]-sensor_state[1],self.x_k_km1[0]-sensor_state[0])
+        predicted_measurement =  np.arctan2(self._x_k_km1[1]-sensor_state[1],self._x_k_km1[0]-sensor_state[0])
         if predicted_measurement<0:predicted_measurement+= 2*np.pi
         return (predicted_measurement,measurement_vector)
 
@@ -66,30 +66,26 @@ class EKFTracker:
 
         #Q[0,0] = 5
         #Q[1,1] = 5
-        predicted_noise_covariance = (self.B.dot(Q)).dot(self.B.transpose())
-        self.x_k_km1 = self.A.dot(self.x_k_k)
-        self.p_k_km1 = (self.A.dot(self.p_k_k)).dot(self.A.transpose()) + predicted_noise_covariance
+        predicted_noise_covariance = (self._B.dot(Q)).dot(self._B.transpose())
+        self._x_k_km1 = self._A.dot(self._x_k_k)
+        self._p_k_km1 = (self._A.dot(self._p_k_k)).dot(self._A.transpose()) + predicted_noise_covariance
         predicted_measurement, measurement_vector = self.linearized_predicted_measurement(sensor_state)
 
-        self.meas_vec.append(measurement_vector)
+        #self.meas_vec.append(measurement_vector)
         #measurement_vector = measurement_vector.reshape(1,len(measurement_vector))
-        self.S_k = (measurement_vector.dot(self.p_k_km1)).dot(measurement_vector.transpose()) + (self.bearing_var)**2
-        if abs(measurement-predicted_measurement)>2:
-            #this is due to discontinuity
-            if measurement>predicted_measurement:
-                predicted_measurement+= 2*np.pi
-            else:
-                predicted_measurement-= 2*np.pi
+        self._S_k = (measurement_vector.dot(self._p_k_km1)).dot(measurement_vector.transpose()) + (self._bearing_var)**2
 
-        self.modified_measurement.append(predicted_measurement)
-
-        self.innovation_list.append(measurement - predicted_measurement)
-        self.innovation_var.append(self.S_k)
+        sgn = np.sign((2 * np.pi + measurement) % (2 * np.pi) - (2 * np.pi + predicted_measurement) % (2 * np.pi))
+        absolute = min(abs(measurement - predicted_measurement),
+                       abs((2 * np.pi + measurement) % (2 * np.pi) - (2 * np.pi + predicted_measurement) % (2 * np.pi)))
+        temp_innovation = sgn * absolute
+        self._innovation_list.append(temp_innovation)
+        self._innovation_var.append(self._S_k)
 
     def update_states(self, sensor_state, measurement):
         # prediction phase
         self.predicted_state(sensor_state,measurement)
-        measurement_vector = self.get_linearized_measurement_vector(self._x_k_km1, sensor_state)  # Linearize the measurement model
+        measurement_vector = self.get_linearized_measurment_vector(self._x_k_km1, sensor_state)  # Linearize the measurement model
         # calculate Kalman gain
         kalman_gain = (self._p_k_km1.dot(measurement_vector.transpose())) / self._S_k
         self._x_k_k = self._x_k_km1 + kalman_gain * self._innovation_list[-1]

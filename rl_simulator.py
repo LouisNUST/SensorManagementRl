@@ -128,11 +128,11 @@ class _OTPSimulationEpisode:
         self.uncertainty.append((1.0/tracker.get_max_uncertainty()) * unnormalized_uncertainty)
         #self.reward.append(2.0/(1+np.exp(10*self.uncertainty[-1])))
 
-        if len(self.uncertainty) < self.window_size + self.window_lag:
+        if len(self.uncertainty) < simulation.window_size + simulation.window_lag:
             self.reward.append(0)
         else:
-            current_avg = np.mean(self.uncertainty[-self.window_size:])
-            prev_avg = np.mean(self.uncertainty[-(self.window_size + self.window_lag):-self.window_lag])
+            current_avg = np.mean(self.uncertainty[-simulation.window_size:])
+            prev_avg = np.mean(self.uncertainty[-(simulation.window_size + simulation.window_lag):-simulation.window_lag])
             # if current_avg<prev_avg:
             slope, c = self.linear_lsq(self.uncertainty[-100:])
             if current_avg<prev_avg or (slope < 1E-4 and c < .1):

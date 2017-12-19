@@ -68,7 +68,7 @@ if __name__ == "__main__":
 
     simulator = OTPSimulator(max_num_episodes=50000, episode_length=2000)
 
-    simulation_metrics = SimulationMetrics(base_path="/Users/u6046782/SensorManagementRl/out/")
+    simulation_metrics = SimulationMetrics(base_path="/Users/u6042446/Desktop/SensorManagementRl/Results/")
 
     simulator.simulate(environment, agent, featurizer, simulation_metrics=simulation_metrics,
                        target_factory=lambda: ConstantVelocityTarget())
