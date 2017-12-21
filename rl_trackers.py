@@ -52,24 +52,33 @@ class EKFTracker:
 
     def linearized_predicted_measurement(self, sensor_state):
         sensor_state = np.array(sensor_state).reshape(len(sensor_state),1)
-        # linearize the measurement model
-        measurement_vector = self.get_linearized_measurement_vector(self._x_k_km1, sensor_state)
-        predicted_measurement = np.arctan2(self._x_k_km1[1] - sensor_state[1], self._x_k_km1[0] - sensor_state[0])
-        if predicted_measurement < 0:
-            predicted_measurement += 2 * np.pi
-        return predicted_measurement, measurement_vector
+        measurement_vector = self.get_linearized_measurement_vector(self._x_k_km1,sensor_state)#Linearize the measurement model
+        #predicted_measurement = measurement_vector.dot(np.array(self.x_k_km1))
+        predicted_measurement =  np.arctan2(self._x_k_km1[1]-sensor_state[1],self._x_k_km1[0]-sensor_state[0])
+        if predicted_measurement<0:predicted_measurement+= 2*np.pi
+        return (predicted_measurement,measurement_vector)
 
     def predicted_state(self, sensor_state, measurement):
         Q = np.eye(2)
-        Q[0, 0] = .1
-        Q[1, 1] = .1
+        Q[0,0] = 1
+        Q[1,1] = 1
+
+        #Q[0,0] = 5
+        #Q[1,1] = 5
         predicted_noise_covariance = (self._B.dot(Q)).dot(self._B.transpose())
         self._x_k_km1 = self._A.dot(self._x_k_k)
         self._p_k_km1 = (self._A.dot(self._p_k_k)).dot(self._A.transpose()) + predicted_noise_covariance
         predicted_measurement, measurement_vector = self.linearized_predicted_measurement(sensor_state)
-        self._meas_vec.append(measurement_vector)
-        self._S_k = (measurement_vector.dot(self._p_k_km1)).dot(measurement_vector.transpose()) + self._bearing_var
-        self._innovation_list.append(measurement - predicted_measurement)
+
+        #self.meas_vec.append(measurement_vector)
+        #measurement_vector = measurement_vector.reshape(1,len(measurement_vector))
+        self._S_k = (measurement_vector.dot(self._p_k_km1)).dot(measurement_vector.transpose()) + (self._bearing_var)**2
+
+        sgn = np.sign((2 * np.pi + measurement) % (2 * np.pi) - (2 * np.pi + predicted_measurement) % (2 * np.pi))
+        absolute = min(abs(measurement - predicted_measurement),
+                       abs((2 * np.pi + measurement) % (2 * np.pi) - (2 * np.pi + predicted_measurement) % (2 * np.pi)))
+        temp_innovation = sgn * absolute
+        self._innovation_list.append(temp_innovation)
         self._innovation_var.append(self._S_k)
 
     def update_states(self, sensor_state, measurement):

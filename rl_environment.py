@@ -35,8 +35,6 @@ class OTPEnvironment:
 
     def generate_bearing(self, target_loc, sensor_loc):
         noiseless_bearing = np.arctan2(target_loc[1] - sensor_loc[1], target_loc[0] - sensor_loc[0])
-        if noiseless_bearing < 0:
-            noiseless_bearing += 2 * np.pi
         self._bearing_measurements.append(noiseless_bearing + np.random.normal(0, self._bearing_variance**2))
 
     def get_last_bearing_measurement(self):
