@@ -34,9 +34,11 @@ class SimulationMetrics:
 
     def save_locations(self, episode_number, episode_metrics):
         for i in range(len(episode_metrics.iteration)):
-            self._writer_locations.write("%s,%s,%s,%s,%s,%s\n" % (episode_number, episode_metrics.iteration[i],
-                                                                  episode_metrics.sensor_x[i], episode_metrics.sensor_y[i],
-                                                                  episode_metrics.target_x_truth[i], episode_metrics.target_y_truth[i]))
+            self._writer_locations.write("%s,%s,%s,%s,%s,%s,%s,%s,%s\n" % (episode_number, episode_metrics.iteration[i],
+                                                                           episode_metrics.sensor_x[i], episode_metrics.sensor_y[i],
+                                                                           episode_metrics.target_x_truth[i], episode_metrics.target_y_truth[i],
+                                                                           episode_metrics.target_x_est[i], episode_metrics.target_y_est[i],
+                                                                           episode_metrics.bearing[i]))
         self._flush(self._writer_locations)
 
     def save_sigmas(self, episode_number, sigmas):
@@ -54,8 +56,8 @@ class SimulationMetrics:
 
 class EpisodeMetrics:
     def __init__(self):
-        self.x_est = []
-        self.y_est = []
+        self.target_x_est = []
+        self.target_y_est = []
         self.x_vel_est = []
         self.y_vel_est = []
         self.target_x_truth = []
@@ -68,12 +70,13 @@ class EpisodeMetrics:
         self.innovation = []
         self.sensor_x = []
         self.sensor_y = []
+        self.bearing = []
 
-    def save(self, iteration, tracker, target, sensor):
+    def save(self, iteration, tracker, target, sensor, bearing):
         estimate = tracker.get_target_state_estimate()
         truth = target.get_current_location()
-        self.x_est.append(estimate[0])
-        self.y_est.append(estimate[1])
+        self.target_x_est.append(estimate[0][0])
+        self.target_y_est.append(estimate[1][0])
         self.x_vel_est.append(estimate[2])
         self.y_vel_est.append(estimate[3])
         self.target_x_truth.append(truth[0])
@@ -87,3 +90,4 @@ class EpisodeMetrics:
         self.iteration.append(iteration)
         self.sensor_x.append(sensor.get_current_location()[0])
         self.sensor_y.append(sensor.get_current_location()[1])
+        self.bearing.append(bearing)

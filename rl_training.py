@@ -29,17 +29,17 @@ if __name__ == "__main__":
     sensor_variance = 1
     learning_rate = .001
 
-    featurizer = RBFFeaturizer(num_rbf_components=num_features, rbf_variance=rbf_variance)
-    agent = StochasticPolicyOTPSensor(num_features=num_features,
-                                      parameter_updater=PolicyGradientParameterUpdater(learning_rate=learning_rate),
-                                      sigma=sensor_variance)
+    # featurizer = RBFFeaturizer(num_rbf_components=num_features, rbf_variance=rbf_variance)
+    # agent = StochasticPolicyOTPSensor(num_features=num_features,
+    #                                   parameter_updater=PolicyGradientParameterUpdater(learning_rate=learning_rate),
+    #                                   sigma=sensor_variance)
 
     # featurizer = None
     # agent = TFNeuralNetDeterministicPolicyOTPSensor(num_input=8, learning_rate=learning_rate)
 
-    # featurizer = None
-    # agent = TFNeuralNetStochasticPolicyOTPSensor(num_input=8, init_learning_rate=1e-6, min_learning_rate=1e-10,
-    #                                              learning_rate_N_max=10000, shuffle=True, batch_size=1)
+    featurizer = None
+    agent = TFNeuralNetStochasticPolicyOTPSensor(num_input=8, init_learning_rate=1e-6, min_learning_rate=1e-10,
+                                                 learning_rate_N_max=10000, shuffle=True, batch_size=1)
 
     # featurizer = RBFFeaturizer(num_rbf_components=num_features, rbf_variance=rbf_variance)
     # agent = TFStochasticPolicyOTPSensor(num_input=num_features, init_learning_rate=0.001)

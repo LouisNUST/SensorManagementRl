@@ -36,7 +36,7 @@ class OTPSimulator:
                 # episode.update_reward_by_location_mse(simulation, target, tracker)
                 episode.update_reward_by_uncertainty(simulation, tracker)
                 episode.update_discounted_return()
-                episode_metrics.save(episode_step_counter, tracker, target, agent)
+                episode_metrics.save(episode_step_counter, tracker, target, agent, environment.get_last_bearing_measurement())
                 if episode_step_counter > self._episode_length:
                     break
                 episode_step_counter += 1
