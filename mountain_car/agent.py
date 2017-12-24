@@ -141,7 +141,7 @@ class TFRandomFeaturesStochasticPolicyAgent:
 
 class TFNeuralNetStochasticPolicyAgent:
     def __init__(self, env, num_input, init_learning_rate=5e-6, min_learning_rate=1e-9, learning_rate_N_max=2000,
-                 shuffle=True, batch_size=1):
+                 shuffle=True, batch_size=1, sigma=None):
         self._env = env
         self._sess = tf.Session()
         self._states = tf.placeholder(tf.float32, (None, num_input), name="states")
@@ -154,8 +154,9 @@ class TFNeuralNetStochasticPolicyAgent:
         # policy parameters
         self._mu_theta = tf.get_variable("mu_theta", [32, 1],
                                               initializer=tf.zeros_initializer())
-        self._sigma_theta = tf.get_variable("sigma_theta", [32],
-                                            initializer=tf.zeros_initializer())
+        if sigma is None:
+            self._sigma_theta = tf.get_variable("sigma_theta", [32],
+                                                initializer=tf.zeros_initializer())
 
         # neural featurizer parameters
         self._W1 = tf.get_variable("W1", [num_input, 32],
@@ -165,8 +166,11 @@ class TFNeuralNetStochasticPolicyAgent:
         self._phi = tf.matmul(self._states, self._W1) + self._b1
 
         self._mu = tf.matmul(self._phi, self._mu_theta)
-        self._sigma = tf.reduce_sum(self._sigma_theta)
-        self._sigma = tf.exp(self._sigma)
+        if sigma is None:
+            self._sigma = tf.reduce_sum(self._sigma_theta)
+            self._sigma = tf.exp(self._sigma)
+        else:
+            self._sigma = tf.constant(sigma, dtype=tf.float32)
 
         self._optimizer = tf.train.GradientDescentOptimizer(learning_rate=self._learning_rate)
 

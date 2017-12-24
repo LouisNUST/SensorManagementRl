@@ -21,7 +21,7 @@ MAX_STEPS = 1000
 #                                                      learning_rate_N_max=2000, shuffle=True, batch_size=24)
 
 agent = TFNeuralNetStochasticPolicyAgent(env, num_input=2, init_learning_rate=5e-5, min_learning_rate=1e-10,
-                                         learning_rate_N_max=2000, shuffle=True, batch_size=24)
+                                         learning_rate_N_max=2000, shuffle=True, batch_size=24, sigma=None)
 
 # agent = TFRecurrentStochasticPolicyAgent(env, num_input=2, init_learning_rate=1e-4, min_learning_rate=1e-10,
 #                                          learning_rate_N_max=2000, shuffle=True, batch_size=1)
