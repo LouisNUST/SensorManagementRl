@@ -14,14 +14,17 @@ num_actions = env.action_space
 MAX_EPISODES = 10000
 MAX_STEPS = 1000
 
-# agent = TFAutoEncodingStochasticPolicyAgent(env, num_input=2, init_learning_rate=1e-4, min_learning_rate=1e-9,
-#                                             learning_rate_N_max=5000, shuffle=True, batch_size=1)
+# agent = TFAutoEncodingStochasticPolicyAgent(env, num_input=2, init_learning_rate=1e-5, min_learning_rate=1e-10,
+#                                             learning_rate_N_max=2000, shuffle=True, batch_size=24)
 
-agent = TFNeuralNetStochasticPolicyAgent(env, num_input=2, init_learning_rate=1e-4, min_learning_rate=1e-9,
-                                         learning_rate_N_max=2000, shuffle=True, batch_size=1)
+# agent = TFDenoisingAutoEncodingStochasticPolicyAgent(env, num_input=2, init_learning_rate=5e-5, min_learning_rate=1e-10,
+#                                                      learning_rate_N_max=2000, shuffle=True, batch_size=24)
 
-# agent = TFRecurrentStochasticPolicyAgent(env, num_input=2, init_learning_rate=5e-3, min_learning_rate=1e-9,
-#                                          learning_rate_N_max=3000, shuffle=True, batch_size=1)
+agent = TFNeuralNetStochasticPolicyAgent(env, num_input=2, init_learning_rate=5e-5, min_learning_rate=1e-10,
+                                         learning_rate_N_max=2000, shuffle=True, batch_size=24)
+
+# agent = TFRecurrentStochasticPolicyAgent(env, num_input=2, init_learning_rate=1e-4, min_learning_rate=1e-10,
+#                                          learning_rate_N_max=2000, shuffle=True, batch_size=1)
 
 # agent = TFRandomFeaturesStochasticPolicyAgent(env, init_learning_rate=1e-4, min_learning_rate=1e-9,
 #                                               learning_rate_N_max=2000)
@@ -36,7 +39,7 @@ for episode_counter in range(MAX_EPISODES):
 
     done = False
     for step_counter in range(MAX_STEPS):
-        env.render()
+        # env.render()
         action, sigma = agent.sample_action(state)
         next_state, reward, done, _ = env.step(action)
 
