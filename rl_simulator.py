@@ -27,14 +27,16 @@ class OTPSimulator:
                 current_state = self._normalize_state(current_state, environment)
                 if featurizer is not None:
                     current_state = featurizer.transform(current_state)
-                for x in current_state:
-                    if x > 1 or x < -1:
-                        episode.is_valid = False
+                # for i, x in enumerate(current_state):
+                #     if x > 1 or x < -1:
+                #         # episode.is_valid = False
+                #         print("invalid")
                 # update the location of sensor based on the current state
                 agent.update_location(np.array(current_state))
                 episode.states.append(current_state)
                 # episode.update_reward_by_location_mse(simulation, target, tracker)
-                episode.update_reward_by_uncertainty(simulation, tracker)
+                # episode.update_reward_by_uncertainty(simulation, tracker)
+                episode.update_reward_by_trace(tracker)
                 episode.update_discounted_return()
                 episode_metrics.save(episode_step_counter, tracker, target, agent, environment.get_last_bearing_measurement())
                 if episode_step_counter > self._episode_length:
@@ -46,7 +48,8 @@ class OTPSimulator:
 
                 if condition:
                     simulation.rewards.append(sum(episode.reward))
-                    print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
+                    # print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
+                    print("%s,%s" % (episode_counter, np.sum(episode.reward)))
                     simulation.sigmas.append(np.mean(agent.get_sigmas(), axis=0))
                     simulation_metrics.save_raw_reward(episode_counter, sum(episode.reward))
                     simulation_metrics.save_locations(episode_counter, episode_metrics)
@@ -75,16 +78,33 @@ class OTPSimulator:
         vel_slope = 2.0 / (environment.get_vel_max() - environment.get_vel_min())
         measure_slope = 1.0 / np.pi
         distance_slope = 2.0 / max_distance
+
+        # ensure target estimate values are in allowed ranges
+        state[0] = np.clip(state[0], environment.get_x_min(), environment.get_x_max())
+        state[1] = np.clip(state[1], environment.get_y_min(), environment.get_y_max())
+        state[2] = np.clip(state[2], environment.get_vel_min(), environment.get_vel_max())
+        state[3] = np.clip(state[3], environment.get_vel_min(), environment.get_vel_max())
+
+        new_state = [None]*7
         # normalization (map each value to the bound (-1,1)
-        state[0] = -1 + x_slope * (state[0] - environment.get_x_min())
-        state[1] = -1 + y_slope * (state[1] - environment.get_y_min())
-        state[2] = -1 + vel_slope * (state[2] - environment.get_vel_min())
-        state[3] = -1 + vel_slope * (state[3] - environment.get_vel_min())
-        state[4] = -1 + x_slope * (state[4] - environment.get_x_min())
-        state[5] = -1 + y_slope * (state[5] - environment.get_y_min())
-        state[6] = -1 + measure_slope * state[6]
-        state[7] = -1 + distance_slope * state[7]
-        return state
+        new_state[0] = -1 + x_slope * (state[0] - environment.get_x_min())
+        new_state[1] = -1 + y_slope * (state[1] - environment.get_y_min())
+        new_state[2] = -1 + vel_slope * (state[2] - environment.get_vel_min())
+        new_state[3] = -1 + vel_slope * (state[3] - environment.get_vel_min())
+        new_state[4] = -1 + x_slope * (state[4] - environment.get_x_min())
+        new_state[5] = -1 + y_slope * (state[5] - environment.get_y_min())
+        new_state[6] = -1 + measure_slope * state[6]
+        # new_state[7] = -1 + distance_slope * state[7]
+
+        # new_state = [None]*5
+        # # normalization (map each value to the bound (-1,1)
+        # new_state[0] = -1 + x_slope * (state[0] - environment.get_x_min())
+        # new_state[1] = -1 + y_slope * (state[1] - environment.get_y_min())
+        # new_state[2] = -1 + x_slope * (state[4] - environment.get_x_min())
+        # new_state[3] = -1 + y_slope * (state[5] - environment.get_y_min())
+        # new_state[4] = -1 + measure_slope * state[6]
+
+        return new_state
 
 
 class _OTPSimulation:
@@ -147,6 +167,20 @@ class _OTPSimulationEpisode:
             else:
                 # reward.append(2.0 / (1 + np.exp(100 * current_avg)))
                 self.reward.append(0)
+
+    def update_reward_by_trace(self, tracker):
+        error_trace = np.trace(tracker.get_estimation_error_covariance_matrix())
+        self.uncertainty.append(error_trace)
+        if len(self.uncertainty) == 1:
+            self.reward.append(0)
+            return
+        error_trace_diff = self.uncertainty[-1] - self.uncertainty[-2]
+        if error_trace_diff < 0:
+            self.reward.append(1)
+        elif error_trace_diff == 0:
+            self.reward.append(0)
+        elif error_trace_diff > 0:
+            self.reward.append(-1)
 
     def update_discounted_return(self):
         self.discount_vector = self._gamma * np.array(self.discount_vector)

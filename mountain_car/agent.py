@@ -15,7 +15,7 @@ class TFRandomFeaturesStochasticPolicyAgent:
         self._scaler = sklearn.preprocessing.StandardScaler()
         self._scaler.fit(observation_examples)
 
-        # Used to converte a state to a featurizes represenation.
+        # Used to convert a state to a featurized representation.
         # We use RBF kernels with different variances to cover different parts of the space
         self._featurizer = sklearn.pipeline.FeatureUnion([
             ("rbf1", RBFSampler(gamma=5.0, n_components=25)),

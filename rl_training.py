@@ -24,7 +24,7 @@ from rl_optimization import PolicyGradientParameterUpdater
 
 if __name__ == "__main__":
 
-    num_features = 20
+    num_features = 400
     rbf_variance = 1
     sensor_variance = 1
     learning_rate = .001
@@ -38,8 +38,9 @@ if __name__ == "__main__":
     # agent = TFNeuralNetDeterministicPolicyOTPSensor(num_input=8, learning_rate=learning_rate)
 
     featurizer = None
-    agent = TFNeuralNetStochasticPolicyOTPSensor(num_input=8, init_learning_rate=1e-6, min_learning_rate=1e-10,
-                                                 learning_rate_N_max=10000, shuffle=True, batch_size=1)
+    agent = TFNeuralNetStochasticPolicyOTPSensor(num_input=7, init_learning_rate=1e-5, min_learning_rate=1e-10,
+                                                 learning_rate_N_max=10000, sigma=1, shuffle=True, batch_size=64,
+                                                 init_pos=[2000, 0])
 
     # featurizer = RBFFeaturizer(num_rbf_components=num_features, rbf_variance=rbf_variance)
     # agent = TFStochasticPolicyOTPSensor(num_input=num_features, init_learning_rate=0.001)
@@ -57,12 +58,12 @@ if __name__ == "__main__":
 
     environment = OTPEnvironment(bearing_variance=1E-2)
 
-    simulator = OTPSimulator(max_num_episodes=50000, episode_length=2000)
+    simulator = OTPSimulator(max_num_episodes=10000, episode_length=2000)
 
     simulation_metrics = SimulationMetrics(base_path="/Users/u6046782/SensorManagementRl/out/",
                                            filename=str(agent) + '.txt')
 
     simulator.simulate(environment, agent, featurizer, simulation_metrics=simulation_metrics,
-                       target_factory=lambda: ConstantVelocityTarget())
+                       target_factory=lambda: ConstantVelocityTarget(init_pos=[0, 0], init_vel=[5, 5]))
 
     simulation_metrics.close_files()

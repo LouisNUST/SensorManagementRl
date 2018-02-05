@@ -4,13 +4,21 @@ import numpy as np
 
 
 class ConstantVelocityTarget:
-    def __init__(self, x_variance=0, y_variance=0):
+    def __init__(self, x_variance=0, y_variance=0, init_pos=None, init_vel=None):
         self._motion_model = ConstantVelocityMotionModel()
-        # initialize target location (x, y) and velocity (x_dot, y_dot) randomly
-        self._x = 2000 * random.random() - 1000
-        self._y = 2000 * random.random() - 1000
-        self._x_dot = 10 * random.random() - 5
-        self._y_dot = 10 * random.random() - 5
+        # initialize target location (x, y) and velocity (x_dot, y_dot)
+        if init_pos is None:
+            self._x = 2000 * random.random() - 1000
+            self._y = 2000 * random.random() - 1000
+        else:
+            self._x = init_pos[0]
+            self._y = init_pos[1]
+        if init_vel is None:
+            self._x_dot = 10 * random.random() - 5
+            self._y_dot = 10 * random.random() - 5
+        else:
+            self._x_dot = init_vel[0]
+            self._y_dot = init_vel[1]
         self._initial_location = [self._x, self._y]
         self._current_location = self._initial_location
         self._historical_location = [self._initial_location]

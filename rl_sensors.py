@@ -11,11 +11,15 @@ class StochasticPolicyOTPSensor:
         self._sigma = sigma
         self._num_features = num_features
         self._parameter_updater = parameter_updater
+
+        self._all_rewards = []
+        self._max_reward_length = 1000000
+
         self.reset_location()
 
     def reset_location(self):
-        self._init_x = 10000 * random.random() - 5000
-        self._init_y = 10000 * random.random() - 5000
+        self._init_x = 2000 #10000 * random.random() - 5000
+        self._init_y = 0 #10000 * random.random() - 5000
         self._initial_location = [self._init_x, self._init_y]
         self._historical_location = [self._initial_location]
         self._current_location = self._initial_location
@@ -41,6 +45,19 @@ class StochasticPolicyOTPSensor:
         return [[0., 0.]] * len(self._sensor_actions)
 
     def update_parameters(self, iteration, discounted_return, episode_states):
+
+        # r = 0
+        # discounted_return = np.zeros(len(rewards))
+        # for t in reversed(range(len(rewards))):
+        #     r = rewards[t] + 0.99 * r
+        #     discounted_return[t] = r
+
+        # reduce gradient variance by normalization
+        self._all_rewards += discounted_return.tolist()
+        self._all_rewards = self._all_rewards[:self._max_reward_length]
+        discounted_return -= np.mean(self._all_rewards)
+        discounted_return /= np.std(self._all_rewards)
+
         condition, new_weights = self._parameter_updater.update_parameters(self._weights, iteration,
                                                                            self._sensor_actions, episode_states,
                                                                            discounted_return, self._num_features,
@@ -53,92 +70,9 @@ class StochasticPolicyOTPSensor:
                str(self._parameter_updater._learning_rate)
 
 
-class TFNeuralNetDeterministicPolicyOTPSensor:
-    def __init__(self, num_input, learning_rate=0.001):
-        self._sess = tf.Session()
-        self._states = tf.placeholder(tf.float32, (None, num_input), name="states")
-        self._W1 = tf.get_variable("W1", [num_input, 20],
-                                   initializer=tf.random_normal_initializer())
-        self._b1 = tf.get_variable("b1", [20],
-                                   initializer=tf.constant_initializer(0))
-        self._h1 = self.leaky_relu(tf.matmul(self._states, self._W1) + self._b1, alpha=0.3)
-        self._W2 = tf.get_variable("W2", [20, 20],
-                                   initializer=tf.random_normal_initializer(stddev=0.1))
-        self._b2 = tf.get_variable("b2", [20],
-                                   initializer=tf.constant_initializer(0))
-        self._h2 = self.leaky_relu(tf.matmul(self._h1, self._W2) + self._b2, alpha=0.3)
-
-        self._W3 = tf.get_variable("W3", [20, 2],
-                                   initializer=tf.random_normal_initializer(stddev=0.1))
-        self._b3 = tf.get_variable("b3", [2],
-                                   initializer=tf.constant_initializer(0))
-        self._out = tf.matmul(self._h2, self._W3) + self._b3
-
-        self._optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
-        self._discounted_rewards = tf.placeholder(tf.float32, (None,), name="discounted_rewards")
-
-        # the policy gradient is: grad log pi(s);
-        #   we use -log pi(s) here because we want to maximize J, but we're doing minimization here
-        self._score = -tf.log(tf.clip_by_value(self._out, 1e-5, 1.0)) * self._discounted_rewards
-
-        self._loss = tf.reduce_sum(self._score)
-
-        self._train_op = self._optimizer.minimize(self._loss)
-
-        self._sess.run(tf.global_variables_initializer())
-
-        self._num_input = num_input
-        self.reset_location()
-
-    def leaky_relu(self, x, alpha):
-        return tf.nn.relu(x) - alpha * tf.nn.relu(-x)
-
-    def reset_location(self):
-        self._init_x = 10000 * random.random() - 5000
-        self._init_y = 10000 * random.random() - 5000
-        self._initial_location = [self._init_x, self._init_y]
-        self._historical_location = [self._initial_location]
-        self._current_location = self._initial_location
-        self._sensor_actions = []
-
-    def update_location(self, system_state):
-        # deterministic policy
-        delta = self._sess.run(self._out, feed_dict={self._states: np.reshape(system_state, (1, self._num_input))})
-
-        self._sensor_actions.append(delta)
-        new_x = self._current_location[0] + delta[0][0]
-        new_y = self._current_location[1] + delta[0][1]
-
-        self._current_location = [new_x, new_y]
-        self._historical_location.append(self._current_location)
-
-    def get_current_location(self):
-        return self._current_location
-
-    def get_weights(self):
-        return []  # TODO for now
-
-    def get_sigmas(self):
-        return [[0., 0.]] * len(self._sensor_actions)  # TODO
-
-    def update_parameters(self, iteration, discounted_return, episode_states):
-        N = len(episode_states)
-        for t in range(N-1):
-            # prepare inputs
-            states  = np.array([episode_states[t]])
-            rewards = np.array([discounted_return[t]])
-
-            # perform one update of training
-            self._sess.run([self._train_op], feed_dict={
-                self._states: states,
-                self._discounted_rewards: rewards
-            })
-        return True
-
-
 class TFNeuralNetStochasticPolicyOTPSensor:
     def __init__(self, num_input, init_learning_rate=1e-6, min_learning_rate=1e-10, learning_rate_N_max=10000,
-                 shuffle=True, batch_size=1):
+                 sigma=None, shuffle=True, batch_size=1, init_pos=None):
         self._sess = tf.Session()
         self._states = tf.placeholder(tf.float32, (None, num_input), name="states")
 
@@ -147,36 +81,42 @@ class TFNeuralNetStochasticPolicyOTPSensor:
         self._learning_rate_N_max = learning_rate_N_max
         self._learning_rate = tf.placeholder(tf.float32, shape=[])
 
+        self._mu_theta_hidden = 800
+        self._sigma_theta_hidden = 100
+        self._layer1_hidden = 1600
+        self._layer2_hidden = self._mu_theta_hidden
+
         # policy parameters
-        self._mu_theta = tf.get_variable("mu_theta", [2, 200],
+        self._mu_theta = tf.get_variable("mu_theta", [2, self._mu_theta_hidden],
                                          initializer=tf.zeros_initializer())
-        self._sigma_theta = tf.get_variable("sigma_theta", [2, 200],
-                                            initializer=tf.zeros_initializer())
+
+        if sigma is None:
+            self._sigma_theta = tf.get_variable("sigma_theta", [2, self._sigma_theta_hidden],
+                                                initializer=tf.zeros_initializer())
 
         # neural featurizer parameters
-        self._W1 = tf.get_variable("W1", [num_input, 800],
+        self._W1 = tf.get_variable("W1", [num_input, self._layer1_hidden],
                                    initializer=tf.random_normal_initializer())
-        self._b1 = tf.get_variable("b1", [800],
+        self._b1 = tf.get_variable("b1", [self._layer1_hidden],
                                    initializer=tf.constant_initializer(0))
         self._h1 = tf.nn.tanh(tf.matmul(self._states, self._W1) + self._b1)
-        self._W2 = tf.get_variable("W2", [800, 1200],
+        self._W2 = tf.get_variable("W2", [self._layer1_hidden, self._layer2_hidden],
                                    initializer=tf.random_normal_initializer(stddev=0.1))
-        self._b2 = tf.get_variable("b2", [1200],
+        self._b2 = tf.get_variable("b2", [self._layer2_hidden],
                                    initializer=tf.constant_initializer(0))
-        # self._phi = tf.matmul(self._h1, self._W2) + self._b2
-        self._h2 = tf.nn.tanh(tf.matmul(self._h1, self._W2) + self._b2)
-
-        self._W3 = tf.get_variable("W3", [1200, 200],
-                                   initializer=tf.random_normal_initializer(stddev=0.1))
-        self._b3 = tf.get_variable("b3", [200],
-                                   initializer=tf.constant_initializer(0))
-        self._phi = tf.matmul(self._h2, self._W3) + self._b3
+        self._phi = tf.nn.tanh(tf.matmul(self._h1, self._W2) + self._b2)
 
         self._mu = tf.matmul(self._phi, tf.transpose(self._mu_theta))
-        self._sigma = tf.matmul(self._phi, tf.transpose(self._sigma_theta))
-        self._sigma = tf.nn.softplus(self._sigma) + 1e-5
+
+        if sigma is None:
+            self._sigma = tf.reduce_sum(self._sigma_theta, 1)
+            self._sigma = tf.reshape(tf.exp(self._sigma), [1, 2])
+        else:
+            self._sigma = tf.constant(sigma, dtype=tf.float32)
 
         self._optimizer = tf.train.GradientDescentOptimizer(learning_rate=self._learning_rate)
+        # self._optimizer = tf.train.AdamOptimizer(learning_rate=init_learning_rate)
+        # self._optimizer = tf.train.RMSPropOptimizer(learning_rate=init_learning_rate, decay=0.9)
 
         self._discounted_rewards = tf.placeholder(tf.float32, (None, 1), name="discounted_rewards")
         self._taken_actions = tf.placeholder(tf.float32, (None, 2), name="taken_actions")
@@ -188,16 +128,24 @@ class TFNeuralNetStochasticPolicyOTPSensor:
 
         self._sess.run(tf.global_variables_initializer())
 
+        self._all_rewards = []
+        self._max_reward_length = 1000000
+
+        self._sigma_in = sigma
         self._num_input = num_input
         self._shuffle = shuffle
         self._batch_size = batch_size
+        self._init_pos = init_pos
         self.reset_location()
 
     def reset_location(self):
-        self._init_x = 10000 * random.random() - 5000
-        self._init_y = 10000 * random.random() - 5000
+        if self._init_pos is None:
+            self._init_x = 10000 * random.random() - 5000
+            self._init_y = 10000 * random.random() - 5000
+        else:
+            self._init_x = self._init_pos[0]
+            self._init_y = self._init_pos[1]
         self._initial_location = [self._init_x, self._init_y]
-        self._historical_location = [self._initial_location]
         self._current_location = self._initial_location
         self._sensor_actions = []
         self._sensor_sigmas = []
@@ -214,8 +162,10 @@ class TFNeuralNetStochasticPolicyOTPSensor:
         new_x = self._current_location[0] + delta[0][0]
         new_y = self._current_location[1] + delta[0][1]
 
+        new_x = np.clip(new_x, -50000, 50000)
+        new_y = np.clip(new_y, -50000, 50000)
+
         self._current_location = [new_x, new_y]
-        self._historical_location.append(self._current_location)
 
     def get_current_location(self):
         return self._current_location
@@ -237,6 +187,12 @@ class TFNeuralNetStochasticPolicyOTPSensor:
         episode_actions = self._sensor_actions
         learning_rate = self._gen_learning_rate(iteration, l_max=self._init_learning_rate,
                                                 l_min=self._min_learning_rate, N_max=self._learning_rate_N_max)
+
+        # reduce gradient variance by normalization
+        self._all_rewards += discounted_return.tolist()
+        self._all_rewards = self._all_rewards[:self._max_reward_length]
+        discounted_return -= np.mean(self._all_rewards)
+        discounted_return /= np.std(self._all_rewards)
 
         N = len(episode_states)
 
@@ -273,8 +229,8 @@ class TFNeuralNetStochasticPolicyOTPSensor:
 
     def __str__(self):
         return self.__class__.__name__ + "_" + str(self._num_input) + "_" + str(self._init_learning_rate) + "_" + \
-               str(self._min_learning_rate) + "_" + str(self._learning_rate_N_max) + "_" + str(self._shuffle) + "_" + \
-               str(self._batch_size)
+               str(self._min_learning_rate) + "_" + str(self._learning_rate_N_max) + "_" + str(self._sigma_in) + "_" + \
+               str(self._shuffle) + "_" + str(self._batch_size)
 
 
 class TFStochasticPolicyOTPSensor:

@@ -13,7 +13,7 @@ class RBFFeaturizer:
                 data = line.strip().split("\t")
                 dd = []
                 [dd.append(float(x)) for x in data]
-                list_of_states.append(dd)
+                list_of_states.append(dd[:-1])
 
         self._featurizer = sklearn.pipeline.FeatureUnion([("rbf1", RBFSampler(gamma=rbf_variance, n_components=num_rbf_components, random_state=1))])
         self._featurizer.fit(np.array(list_of_states))  # Use this featurizer for normalization
