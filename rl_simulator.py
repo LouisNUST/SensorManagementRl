@@ -85,16 +85,16 @@ class OTPSimulator:
         state[2] = np.clip(state[2], environment.get_vel_min(), environment.get_vel_max())
         state[3] = np.clip(state[3], environment.get_vel_min(), environment.get_vel_max())
 
-        new_state = [None]*7
-        # normalization (map each value to the bound (-1,1)
-        new_state[0] = -1 + x_slope * (state[0] - environment.get_x_min())
-        new_state[1] = -1 + y_slope * (state[1] - environment.get_y_min())
-        new_state[2] = -1 + vel_slope * (state[2] - environment.get_vel_min())
-        new_state[3] = -1 + vel_slope * (state[3] - environment.get_vel_min())
-        new_state[4] = -1 + x_slope * (state[4] - environment.get_x_min())
-        new_state[5] = -1 + y_slope * (state[5] - environment.get_y_min())
-        new_state[6] = -1 + measure_slope * state[6]
-        # new_state[7] = -1 + distance_slope * state[7]
+        # new_state = [None]*7
+        # # normalization (map each value to the bound (-1,1)
+        # new_state[0] = -1 + x_slope * (state[0] - environment.get_x_min())
+        # new_state[1] = -1 + y_slope * (state[1] - environment.get_y_min())
+        # new_state[2] = -1 + vel_slope * (state[2] - environment.get_vel_min())
+        # new_state[3] = -1 + vel_slope * (state[3] - environment.get_vel_min())
+        # new_state[4] = -1 + x_slope * (state[4] - environment.get_x_min())
+        # new_state[5] = -1 + y_slope * (state[5] - environment.get_y_min())
+        # new_state[6] = -1 + measure_slope * state[6]
+        # # new_state[7] = -1 + distance_slope * state[7]
 
         # new_state = [None]*5
         # # normalization (map each value to the bound (-1,1)
@@ -103,6 +103,14 @@ class OTPSimulator:
         # new_state[2] = -1 + x_slope * (state[4] - environment.get_x_min())
         # new_state[3] = -1 + y_slope * (state[5] - environment.get_y_min())
         # new_state[4] = -1 + measure_slope * state[6]
+
+        new_state = [None]*5
+        # normalization (map each value to the bound (-1,1)
+        new_state[0] = -1 + x_slope * (state[0] - environment.get_x_min())
+        new_state[1] = -1 + y_slope * (state[1] - environment.get_y_min())
+        new_state[2] = -1 + x_slope * (state[4] - environment.get_x_min())
+        new_state[3] = -1 + y_slope * (state[5] - environment.get_y_min())
+        new_state[4] = -1 + measure_slope * state[6]
 
         return new_state
 
