@@ -48,8 +48,8 @@ class OTPSimulator:
 
                 if condition:
                     simulation.rewards.append(sum(episode.reward))
-                    # print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
-                    print("%s,%s" % (episode_counter, np.sum(episode.reward)))
+                    print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
+                    # print("%s,%s" % (episode_counter, np.sum(episode.reward)))
                     simulation.sigmas.append(np.mean(agent.get_sigmas(), axis=0))
                     simulation_metrics.save_raw_reward(episode_counter, sum(episode.reward))
                     simulation_metrics.save_locations(episode_counter, episode_metrics)
@@ -93,7 +93,7 @@ class OTPSimulator:
         new_state[3] = -1 + vel_slope * (state[3] - environment.get_vel_min())
         new_state[4] = -1 + x_slope * (state[4] - environment.get_x_min())
         new_state[5] = -1 + y_slope * (state[5] - environment.get_y_min())
-        new_state[6] = -1 + measure_slope * state[6]
+        new_state[6] = np.clip(-1 + measure_slope * state[6], -1., 1.)
         # new_state[7] = -1 + distance_slope * state[7]
 
         # new_state = [None]*5

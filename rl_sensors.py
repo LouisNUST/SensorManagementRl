@@ -72,39 +72,42 @@ class StochasticPolicyOTPSensor:
 
 class TFNeuralNetStochasticPolicyOTPSensor:
     def __init__(self, num_input, init_learning_rate=1e-6, min_learning_rate=1e-10, learning_rate_N_max=10000,
-                 sigma=None, shuffle=True, batch_size=1, init_pos=None):
+                 sigma=None, shuffle=True, batch_size=1, init_pos=None, non_linearity=tf.nn.tanh, clip_norm=5.0):
         self._sess = tf.Session()
-        self._states = tf.placeholder(tf.float32, (None, num_input), name="states")
+        dtype = tf.float32
+        self._states = tf.placeholder(dtype, (None, num_input), name="states")
 
         self._init_learning_rate = init_learning_rate
         self._min_learning_rate = min_learning_rate
         self._learning_rate_N_max = learning_rate_N_max
-        self._learning_rate = tf.placeholder(tf.float32, shape=[])
+        self._learning_rate = tf.placeholder(dtype, shape=[])
+        self._clip_norm = clip_norm
 
         self._mu_theta_hidden = 800
         self._sigma_theta_hidden = 100
         self._layer1_hidden = 1600
         self._layer2_hidden = self._mu_theta_hidden
 
-        # policy parameters
-        self._mu_theta = tf.get_variable("mu_theta", [2, self._mu_theta_hidden],
-                                         initializer=tf.zeros_initializer())
+        with tf.name_scope("network_variables"):
+            # policy parameters
+            self._mu_theta = tf.get_variable("mu_theta", [2, self._mu_theta_hidden],
+                                             initializer=tf.zeros_initializer(), dtype=dtype)
 
-        if sigma is None:
-            self._sigma_theta = tf.get_variable("sigma_theta", [2, self._sigma_theta_hidden],
-                                                initializer=tf.zeros_initializer())
+            if sigma is None:
+                self._sigma_theta = tf.get_variable("sigma_theta", [2, self._sigma_theta_hidden],
+                                                    initializer=tf.zeros_initializer(), dtype=dtype)
 
-        # neural featurizer parameters
-        self._W1 = tf.get_variable("W1", [num_input, self._layer1_hidden],
-                                   initializer=tf.random_normal_initializer())
-        self._b1 = tf.get_variable("b1", [self._layer1_hidden],
-                                   initializer=tf.constant_initializer(0))
-        self._h1 = tf.nn.tanh(tf.matmul(self._states, self._W1) + self._b1)
-        self._W2 = tf.get_variable("W2", [self._layer1_hidden, self._layer2_hidden],
-                                   initializer=tf.random_normal_initializer(stddev=0.1))
-        self._b2 = tf.get_variable("b2", [self._layer2_hidden],
-                                   initializer=tf.constant_initializer(0))
-        self._phi = tf.nn.tanh(tf.matmul(self._h1, self._W2) + self._b2)
+            # neural featurizer parameters
+            self._W1 = tf.get_variable("W1", [num_input, self._layer1_hidden],
+                                       initializer=tf.random_normal_initializer(), dtype=dtype)
+            self._b1 = tf.get_variable("b1", [self._layer1_hidden],
+                                       initializer=tf.constant_initializer(0), dtype=dtype)
+            self._h1 = non_linearity(tf.matmul(self._states, self._W1) + self._b1)
+            self._W2 = tf.get_variable("W2", [self._layer1_hidden, self._layer2_hidden],
+                                       initializer=tf.random_normal_initializer(stddev=0.1), dtype=dtype)
+            self._b2 = tf.get_variable("b2", [self._layer2_hidden],
+                                       initializer=tf.constant_initializer(0), dtype=dtype)
+            self._phi = non_linearity(tf.matmul(self._h1, self._W2) + self._b2)
 
         self._mu = tf.matmul(self._phi, tf.transpose(self._mu_theta))
 
@@ -112,19 +115,27 @@ class TFNeuralNetStochasticPolicyOTPSensor:
             self._sigma = tf.reduce_sum(self._sigma_theta, 1)
             self._sigma = tf.reshape(tf.exp(self._sigma), [1, 2])
         else:
-            self._sigma = tf.constant(sigma, dtype=tf.float32)
+            self._sigma = tf.constant(sigma, dtype=dtype)
 
         self._optimizer = tf.train.GradientDescentOptimizer(learning_rate=self._learning_rate)
-        # self._optimizer = tf.train.AdamOptimizer(learning_rate=init_learning_rate)
+        # self._optimizer = tf.train.MomentumOptimizer(learning_rate=self._learning_rate, momentum=0.9, use_nesterov=True)
+        # self._optimizer = tf.train.AdagradOptimizer(learning_rate=init_learning_rate)
+        # self._optimizer = tf.train.AdadeltaOptimizer()
         # self._optimizer = tf.train.RMSPropOptimizer(learning_rate=init_learning_rate, decay=0.9)
 
-        self._discounted_rewards = tf.placeholder(tf.float32, (None, 1), name="discounted_rewards")
-        self._taken_actions = tf.placeholder(tf.float32, (None, 2), name="taken_actions")
+        self._discounted_rewards = tf.placeholder(dtype, (None, 1), name="discounted_rewards")
+        self._taken_actions = tf.placeholder(dtype, (None, 2), name="taken_actions")
+
+        # self._network_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="network_variables")
+        # self.reg_loss = tf.reduce_sum([tf.reduce_sum(tf.square(x)) for x in self._network_variables])
 
         # we'll get the policy gradient by using -log(pdf), where pdf is the PDF of the Normal distribution
         self._loss = -tf.log(tf.sqrt(1/(2 * np.pi * self._sigma**2)) * tf.exp(-(self._taken_actions - self._mu)**2/(2 * self._sigma**2))) * self._discounted_rewards
 
-        self._train_op = self._optimizer.minimize(self._loss)
+        self._gradients, variables = zip(*self._optimizer.compute_gradients(self._loss))
+        self._gradients, _ = tf.clip_by_global_norm(self._gradients, self._clip_norm)
+        self._train_op = self._optimizer.apply_gradients(zip(self._gradients, variables))
+        # self._train_op = self._optimizer.minimize(self._loss)
 
         self._sess.run(tf.global_variables_initializer())
 
@@ -216,7 +227,7 @@ class TFNeuralNetStochasticPolicyOTPSensor:
             rewards = [row[2] for row in batch]
 
             self._sess.run([self._train_op], feed_dict={
-                self._states: states,
+                self._states:             states,
                 self._taken_actions:      actions,
                 self._discounted_rewards: rewards,
                 self._learning_rate:      learning_rate
