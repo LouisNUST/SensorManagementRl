@@ -72,7 +72,8 @@ class StochasticPolicyOTPSensor:
 
 class TFNeuralNetStochasticPolicyOTPSensor:
     def __init__(self, num_input, init_learning_rate=1e-6, min_learning_rate=1e-10, learning_rate_N_max=10000,
-                 sigma=None, shuffle=True, batch_size=1, init_pos=None, non_linearity=tf.nn.tanh, clip_norm=5.0):
+                 sigma=None, shuffle=True, batch_size=1, init_pos=None, non_linearity=tf.nn.tanh, clip_norm=5.0,initial_weights=None,seed=0):
+        #np.random.seed(seed) #set the random-seed
         self._sess = tf.Session()
         dtype = tf.float32
         self._states = tf.placeholder(dtype, (None, num_input), name="states")
@@ -98,16 +99,34 @@ class TFNeuralNetStochasticPolicyOTPSensor:
                                                     initializer=tf.zeros_initializer(), dtype=dtype)
 
             # neural featurizer parameters
-            self._W1 = tf.get_variable("W1", [num_input, self._layer1_hidden],
-                                       initializer=tf.random_normal_initializer(), dtype=dtype)
-            self._b1 = tf.get_variable("b1", [self._layer1_hidden],
-                                       initializer=tf.constant_initializer(0), dtype=dtype)
-            self._h1 = non_linearity(tf.matmul(self._states, self._W1) + self._b1)
-            self._W2 = tf.get_variable("W2", [self._layer1_hidden, self._layer2_hidden],
-                                       initializer=tf.random_normal_initializer(stddev=0.1), dtype=dtype)
-            self._b2 = tf.get_variable("b2", [self._layer2_hidden],
-                                       initializer=tf.constant_initializer(0), dtype=dtype)
-            self._phi = non_linearity(tf.matmul(self._h1, self._W2) + self._b2)
+            #self._W1 = tf.get_variable("W1", shape=[num_input, self._layer1_hidden],
+             #                          initializer=tf.contrib.layers.xavier_initializer(uniform=True,seed=seed),dtype=dtype)
+
+            if not initial_weights:
+
+                self._W1 = tf.get_variable("W1", [num_input, self._layer1_hidden],
+                                           initializer=tf.random_normal_initializer(), seed=seed, dtype=dtype)
+
+                self._b1 = tf.get_variable("b1", [self._layer1_hidden],
+                                           initializer=tf.random_normal_initializer(), seed=seed, dtype=dtype)
+                self._h1 = non_linearity(tf.matmul(self._states, self._W1) + self._b1)
+                self._W2 = tf.get_variable("W2", [self._layer1_hidden, self._layer2_hidden],
+                                           initializer=tf.random_normal_initializer(), seed = seed, dtype=dtype)
+                self._b2 = tf.get_variable("b2", [self._layer2_hidden],
+                                           initializer=tf.random_normal_initializer(), seed= seed, dtype=dtype)
+                self._phi = non_linearity(tf.matmul(self._h1, self._W2) + self._b2)
+            else:
+                print("going with constant initialization")
+                w1 = initial_weights['arr_0']
+                w2 = initial_weights['arr_1']
+                b1 = initial_weights['arr_2']
+                b2 = initial_weights['arr_3']
+                self._W1 = tf.get_variable("W1",initializer=tf.constant(w1))
+                self._b1 = tf.get_variable("b1",initializer=tf.constant(b1))
+                self._h1 = non_linearity(tf.matmul(self._states, self._W1) + self._b1)
+                self._W2 = tf.get_variable("W2",initializer=tf.constant(w2))
+                self._b2 = tf.get_variable("b2",initializer=tf.constant(b2))
+                self._phi = non_linearity(tf.matmul(self._h1, self._W2) + self._b2)
 
         self._mu = tf.matmul(self._phi, tf.transpose(self._mu_theta))
 
@@ -149,6 +168,14 @@ class TFNeuralNetStochasticPolicyOTPSensor:
         self._init_pos = init_pos
         self.reset_location()
 
+    def get_weights(self):
+        w1 = self._W1.eval(self._sess)
+        w2 = self._W2.eval(self._sess)
+        b1 = self._b1.eval(self._sess)
+        b2 = self._b2.eval(self._sess)
+
+        return w1,w2,b1,b2
+
     def reset_location(self):
         if self._init_pos is None:
             self._init_x = 10000 * random.random() - 5000
@@ -181,8 +208,8 @@ class TFNeuralNetStochasticPolicyOTPSensor:
     def get_current_location(self):
         return self._current_location
 
-    def get_weights(self):
-        return []  # TODO for now
+    #def get_weights(self):
+     #   return []  # TODO for now
 
     def get_sigmas(self):
         return self._sensor_sigmas
@@ -198,7 +225,6 @@ class TFNeuralNetStochasticPolicyOTPSensor:
         episode_actions = self._sensor_actions
         learning_rate = self._gen_learning_rate(iteration, l_max=self._init_learning_rate,
                                                 l_min=self._min_learning_rate, N_max=self._learning_rate_N_max)
-
         # reduce gradient variance by normalization
         self._all_rewards += discounted_return.tolist()
         self._all_rewards = self._all_rewards[:self._max_reward_length]
@@ -419,6 +445,7 @@ class TFStochasticPolicyWithSigmaOTPSensor:
     def update_parameters(self, iteration, discounted_return, episode_states):
         episode_actions = self._sensor_actions
         learning_rate = self._gen_learning_rate(iteration, l_max=self._init_learning_rate, l_min=1E-8, N_max=10000)
+
         N = len(episode_states)
         for t in range(N-1):
             # prepare inputs

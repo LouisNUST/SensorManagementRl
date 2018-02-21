@@ -34,8 +34,8 @@ class OTPSimulator:
                 # update the location of sensor based on the current state
                 agent.update_location(np.array(current_state))
                 episode.states.append(current_state)
-                # episode.update_reward_by_location_mse(simulation, target, tracker)
-                # episode.update_reward_by_uncertainty(simulation, tracker)
+                #episode.update_reward_by_location_mse(simulation, target, tracker)
+                #episode.update_reward_by_uncertainty(simulation, tracker)
                 episode.update_reward_by_trace(tracker)
                 episode.update_discounted_return()
                 episode_metrics.save(episode_step_counter, tracker, target, agent, environment.get_last_bearing_measurement())
@@ -52,11 +52,11 @@ class OTPSimulator:
                     # print("%s,%s" % (episode_counter, np.sum(episode.reward)))
                     simulation.sigmas.append(np.mean(agent.get_sigmas(), axis=0))
                     simulation_metrics.save_raw_reward(episode_counter, sum(episode.reward))
-                    simulation_metrics.save_locations(episode_counter, episode_metrics)
+                    #simulation_metrics.save_locations(episode_counter, episode_metrics)
                     if episode_counter % 100 == 0 and episode_counter > 0:
-                        # print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
+                        #print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
                         simulation_metrics.save_rewards(episode_counter, simulation.rewards)
-                        simulation_metrics.save_sigmas(episode_counter, simulation.sigmas)
+                        #simulation_metrics.save_sigmas(episode_counter, simulation.sigmas)
                         simulation.rewards = []
                         simulation.sigmas = []
                     episode_counter += 1
@@ -153,14 +153,23 @@ class _OTPSimulationEpisode:
         self.uncertainty.append((1.0/tracker.get_max_uncertainty()) * unnormalized_uncertainty)
         #self.reward.append(2.0/(1+np.exp(10*self.uncertainty[-1])))
 
+        #if len(self.uncertainty) < simulation.window_size + simulation.window_lag:
         if len(self.uncertainty) < simulation.window_size + simulation.window_lag:
-            self.reward.append(0)
+            self.reward.append(-1)
         else:
             current_avg = np.mean(self.uncertainty[-simulation.window_size:])
             prev_avg = np.mean(self.uncertainty[-(simulation.window_size + simulation.window_lag):-simulation.window_lag])
             # if current_avg<prev_avg:
             slope, c = self.linear_lsq(self.uncertainty[-100:])
-            if self.uncertainty[-1]<self.uncertainty[-2] or (slope < 1E-4 and c < .1):
+            #if (slope < 0):
+            #if slope>1E-4:
+             #   self.reward.append(-1)
+            #elif slope<1E-4 and slope>1E-5:
+             #   self.reward.append(0)
+            #else:
+             #   self.reward.append(1)
+
+            if (slope < 1E-5 and c < .1):
                 # if current_avg_error<prev_avg_erroror or pos_error[-1]<3:
                 # if current_avg < prev_avg:
                 self.reward.append(1)
@@ -169,15 +178,17 @@ class _OTPSimulationEpisode:
                 self.reward.append(0)
 
     def update_reward_by_trace(self, tracker):
-        error_trace = np.trace(tracker.get_estimation_error_covariance_matrix())
+        error_trace = (1.0/tracker.get_max_uncertainty())*np.trace(tracker.get_estimation_error_covariance_matrix())
         self.uncertainty.append(error_trace)
+        slope, c = self.linear_lsq(self.uncertainty[-50:])
+
         if len(self.uncertainty) == 1:
             self.reward.append(0)
             return
         error_trace_diff = self.uncertainty[-1] - self.uncertainty[-2]
         if error_trace_diff < 0:
             self.reward.append(1)
-        elif error_trace_diff == 0:
+        elif slope<1E-6:
             self.reward.append(0)
         elif error_trace_diff > 0:
             self.reward.append(-1)

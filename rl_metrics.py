@@ -11,16 +11,24 @@ class SimulationMetrics:
         raw_reward_filename = self._base_path + "raw_reward_" + filename
         locations_filename = self._base_path + "locations_" + filename
         sensor_sigmas_filename = self._base_path + "sensor_sigmas_" + filename
+        initial_parameters_filename = self._base_path + "initial_parameters_"+filename
+        final_weights_file_name = self._base_path+"final_weights_"+ filename
+
         silent_remove(avg_reward_filename)
         silent_remove(var_reward_filename)
         silent_remove(raw_reward_filename)
         silent_remove(locations_filename)
         silent_remove(sensor_sigmas_filename)
+        silent_remove(initial_parameters_filename)
+        silent_remove(final_weights_file_name)
+
         self._writer_avg_reward = open_file_for_writing(avg_reward_filename, mode="a")
         self._writer_var_reward = open_file_for_writing(var_reward_filename, mode="a")
         self._writer_raw_reward = open_file_for_writing(raw_reward_filename, mode="a")
-        self._writer_locations = open_file_for_writing(locations_filename, mode="a")
-        self._writer_sigmas = open_file_for_writing(sensor_sigmas_filename, mode="a")
+        #self._writer_locations = open_file_for_writing(locations_filename, mode="a")
+        #self._writer_sigmas = open_file_for_writing(sensor_sigmas_filename, mode="a")
+        #self._writer_initial_params = open_file_for_writing(initial_parameters_filename, mode = "a")
+        #self._writer_final_weights = open_file_for_writing(final_weights_file_name, mode="a")
 
     def save_raw_reward(self, episode_number, reward):
         self._writer_raw_reward.write("%s,%s\n" % (episode_number, reward))
@@ -44,6 +52,8 @@ class SimulationMetrics:
     def save_sigmas(self, episode_number, sigmas):
         self._writer_sigmas.write("%s,%s\n" % (episode_number, np.mean(sigmas, axis=0)))
         self._flush(self._writer_sigmas)
+
+
 
     def _flush(self, f):
         f.flush()

@@ -28,6 +28,7 @@ class ConstantVelocityTarget:
         self._x_variance = x_variance
         self._y_variance = y_variance
 
+
     def move(self):
         return self._motion_model.move()
 
