@@ -6,6 +6,8 @@ from rl_targets import ConstantVelocityTarget
 from rl_metrics import SimulationMetrics
 from rl_optimization import PolicyGradientParameterUpdater
 
+import tensorflow as tf
+
 # the Target state consists of: x (x coordinate), y (y coordinate), xdot (velocity in the x dimension), ydot (velocity in the y dimension)
 # the Sensor state consists of: x (x coordinate), y (y coordinate)
 # additionally, we keep track of the bearing from the Sensor to the Target (noisy),
@@ -34,27 +36,13 @@ if __name__ == "__main__":
     #                                   parameter_updater=PolicyGradientParameterUpdater(learning_rate=learning_rate),
     #                                   sigma=sensor_variance)
 
-    # featurizer = None
-    # agent = TFNeuralNetDeterministicPolicyOTPSensor(num_input=8, learning_rate=learning_rate)
-
     featurizer = None
     agent = TFNeuralNetStochasticPolicyOTPSensor(num_input=7, init_learning_rate=1e-3, min_learning_rate=1e-10,
-                                                 learning_rate_N_max=10000, sigma=1, shuffle=True, batch_size=64,
+                                                 learning_rate_N_max=1000, sigma=1, shuffle=True, batch_size=64,
                                                  init_pos=None, non_linearity=tf.nn.tanh, clip_norm=5.0)
 
     # featurizer = RBFFeaturizer(num_rbf_components=num_features, rbf_variance=rbf_variance)
     # agent = TFStochasticPolicyOTPSensor(num_input=num_features, init_learning_rate=0.001)
-
-    # featurizer = RBFFeaturizer(num_rbf_components=num_features, rbf_variance=rbf_variance)
-    # agent = TFStochasticPolicyWithSigmaOTPSensor(num_input=num_features, init_learning_rate=0.0005)
-
-    # featurizer = None
-    # agent = TFRecurrentStochasticPolicyOTPSensor(num_input=8, learning_rate=learning_rate, sigma=sensor_variance, n_hidden=50)
-
-    # featurizer = None
-    # agent = TFNeuralNetStochasticPolicyStackingOTPSensor(state_dim=3, num_states=5, init_learning_rate=1e-8,
-    #                                                      min_learning_rate=1e-12, learning_rate_N_max=10000,
-    #                                                      shuffle=True, batch_size=1)
 
     environment = OTPEnvironment(bearing_variance=1E-2)
 
@@ -64,6 +52,6 @@ if __name__ == "__main__":
                                            filename=str(agent) + '.txt')
 
     simulator.simulate(environment, agent, featurizer, simulation_metrics=simulation_metrics,
-                       target_factory=lambda: ConstantVelocityTarget(init_pos=None, init_vel=[5, 5]))
+                       target_factory=lambda: ConstantVelocityTarget(init_pos=[0, 0], init_vel=[5, 5]))
 
     simulation_metrics.close_files()

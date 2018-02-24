@@ -27,10 +27,6 @@ class OTPSimulator:
                 current_state = self._normalize_state(current_state, environment)
                 if featurizer is not None:
                     current_state = featurizer.transform(current_state)
-                # for i, x in enumerate(current_state):
-                #     if x > 1 or x < -1:
-                #         # episode.is_valid = False
-                #         print("invalid")
                 # update the location of sensor based on the current state
                 agent.update_location(np.array(current_state))
                 episode.states.append(current_state)
@@ -48,8 +44,8 @@ class OTPSimulator:
 
                 if condition:
                     simulation.rewards.append(sum(episode.reward))
-                    print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
-                    # print("%s,%s" % (episode_counter, np.sum(episode.reward)))
+                    # print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
+                    print("%s,%s" % (episode_counter, np.sum(episode.reward)))
                     simulation.sigmas.append(np.mean(agent.get_sigmas(), axis=0))
                     simulation_metrics.save_raw_reward(episode_counter, sum(episode.reward))
                     simulation_metrics.save_locations(episode_counter, episode_metrics)
