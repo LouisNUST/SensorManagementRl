@@ -52,10 +52,6 @@ class TFNeuralNetStochasticPolicyOTPSensor:
             self._sigma = tf.constant(sigma, dtype=dtype)
 
         self._optimizer = tf.train.GradientDescentOptimizer(learning_rate=self._learning_rate)
-        # self._optimizer = tf.train.MomentumOptimizer(learning_rate=self._learning_rate, momentum=0.9, use_nesterov=True)
-        # self._optimizer = tf.train.AdagradOptimizer(learning_rate=init_learning_rate)
-        # self._optimizer = tf.train.AdadeltaOptimizer()
-        # self._optimizer = tf.train.RMSPropOptimizer(learning_rate=init_learning_rate, decay=0.9)
 
         self._discounted_rewards = tf.placeholder(dtype, (None, 1), name="discounted_rewards")
         self._taken_actions = tf.placeholder(dtype, (None, 2), name="taken_actions")
@@ -66,10 +62,12 @@ class TFNeuralNetStochasticPolicyOTPSensor:
         # we'll get the policy gradient by using -log(pdf), where pdf is the PDF of the Normal distribution
         self._loss = -tf.log(tf.sqrt(1/(2 * np.pi * self._sigma**2)) * tf.exp(-(self._taken_actions - self._mu)**2/(2 * self._sigma**2))) * self._discounted_rewards
 
-        self._gradients, variables = zip(*self._optimizer.compute_gradients(self._loss))
-        self._gradients, _ = tf.clip_by_global_norm(self._gradients, self._clip_norm)
-        self._train_op = self._optimizer.apply_gradients(zip(self._gradients, variables))
-        # self._train_op = self._optimizer.minimize(self._loss)
+        if clip_norm is None:
+            self._train_op = self._optimizer.minimize(self._loss)
+        else:
+            self._gradients, variables = zip(*self._optimizer.compute_gradients(self._loss))
+            self._gradients, _ = tf.clip_by_global_norm(self._gradients, self._clip_norm)
+            self._train_op = self._optimizer.apply_gradients(zip(self._gradients, variables))
 
         self._sess.run(tf.global_variables_initializer())
 

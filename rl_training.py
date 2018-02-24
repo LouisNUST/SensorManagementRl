@@ -26,32 +26,40 @@ import tensorflow as tf
 
 if __name__ == "__main__":
 
-    num_features = 20
-    rbf_variance = 1
-    sensor_variance = 1
-    learning_rate = .001
-
-    # featurizer = RBFFeaturizer(num_rbf_components=num_features, rbf_variance=rbf_variance)
-    # agent = StochasticPolicyOTPSensor(num_features=num_features,
-    #                                   parameter_updater=PolicyGradientParameterUpdater(learning_rate=learning_rate),
-    #                                   sigma=sensor_variance)
-
+    num_input = 7
+    init_learning_rate = 1e-3
+    min_learning_rate = 1e-10
+    learning_rate_N_max = 3000
+    sensor_sigma = 1
+    shuffle = True
+    batch_size = 64
+    non_linearity = tf.nn.tanh
+    clip_norm = 5.0
     featurizer = None
-    agent = TFNeuralNetStochasticPolicyOTPSensor(num_input=7, init_learning_rate=1e-3, min_learning_rate=1e-10,
-                                                 learning_rate_N_max=1000, sigma=1, shuffle=True, batch_size=64,
-                                                 init_pos=None, non_linearity=tf.nn.tanh, clip_norm=5.0)
 
-    # featurizer = RBFFeaturizer(num_rbf_components=num_features, rbf_variance=rbf_variance)
-    # agent = TFStochasticPolicyOTPSensor(num_input=num_features, init_learning_rate=0.001)
+    sensor_init_pos = [2000, 0]
+    target_init_pos = [0, 0]
+    target_init_vel = [5, 5]
 
-    environment = OTPEnvironment(bearing_variance=1E-2)
+    bearing_variance = 1e-2
 
-    simulator = OTPSimulator(max_num_episodes=10000, episode_length=2000)
+    max_num_episodes = 3000
+    episode_length = 2000
+
+    agent = TFNeuralNetStochasticPolicyOTPSensor(num_input=num_input, init_learning_rate=init_learning_rate,
+                                                 min_learning_rate=min_learning_rate,
+                                                 learning_rate_N_max=learning_rate_N_max, sigma=sensor_sigma,
+                                                 shuffle=shuffle, batch_size=batch_size, init_pos=sensor_init_pos,
+                                                 non_linearity=non_linearity, clip_norm=clip_norm)
+
+    environment = OTPEnvironment(bearing_variance=bearing_variance)
+
+    simulator = OTPSimulator(max_num_episodes=max_num_episodes, episode_length=episode_length)
 
     simulation_metrics = SimulationMetrics(base_path="/Users/u6046782/SensorManagementRl/out/",
                                            filename=str(agent) + '.txt')
 
     simulator.simulate(environment, agent, featurizer, simulation_metrics=simulation_metrics,
-                       target_factory=lambda: ConstantVelocityTarget(init_pos=[0, 0], init_vel=[5, 5]))
+                       target_factory=lambda: ConstantVelocityTarget(init_pos=target_init_pos, init_vel=target_init_vel))
 
     simulation_metrics.close_files()
