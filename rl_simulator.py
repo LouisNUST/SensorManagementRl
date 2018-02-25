@@ -19,7 +19,7 @@ class OTPSimulator:
             tracker = EKFTracker(target.get_x(), target.get_y(), 1E9, A, B, target.get_x_variance(), target.get_y_variance(), environment.bearing_variance())
             agent.reset_location()
             episode_step_counter = 0
-            while episode.is_valid:
+            while True:
                 target.update_location()
                 environment.generate_bearing(target.get_current_location(), agent.get_current_location())
                 tracker.update_states(agent.get_current_location(), environment.get_last_bearing_measurement())
@@ -30,7 +30,6 @@ class OTPSimulator:
                 # update the location of sensor based on the current state
                 agent.update_location(np.array(current_state))
                 episode.states.append(current_state)
-                # episode.update_reward_by_location_mse(simulation, target, tracker)
                 # episode.update_reward_by_uncertainty(simulation, tracker)
                 episode.update_reward_by_trace(tracker)
                 episode.update_discounted_return()
@@ -39,24 +38,23 @@ class OTPSimulator:
                     break
                 episode_step_counter += 1
 
-            if episode.is_valid:
-                condition = agent.update_parameters(episode_counter, episode.discounted_return, episode.states)
+            valid_update = agent.update_parameters(episode_counter, episode.discounted_return, episode.states)
 
-                if condition:
-                    simulation.rewards.append(sum(episode.reward))
+            if valid_update:
+                simulation.rewards.append(sum(episode.reward))
+                # print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
+                print("%s,%s" % (episode_counter, np.sum(episode.reward)))
+                simulation.sigmas.append(np.mean(agent.get_sigmas(), axis=0))
+                simulation_metrics.save_raw_reward(episode_counter, sum(episode.reward))
+                simulation_metrics.save_locations(episode_counter, episode_metrics)
+                if episode_counter % 100 == 0 and episode_counter > 0:
                     # print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
-                    print("%s,%s" % (episode_counter, np.sum(episode.reward)))
-                    simulation.sigmas.append(np.mean(agent.get_sigmas(), axis=0))
-                    simulation_metrics.save_raw_reward(episode_counter, sum(episode.reward))
-                    simulation_metrics.save_locations(episode_counter, episode_metrics)
-                    if episode_counter % 100 == 0 and episode_counter > 0:
-                        # print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
-                        simulation_metrics.save_rewards(episode_counter, simulation.rewards)
-                        simulation_metrics.save_sigmas(episode_counter, simulation.sigmas)
-                        simulation.rewards = []
-                        simulation.sigmas = []
-                    episode_counter += 1
-                    # simulation_metrics.save_weights(agent.get_weights())
+                    simulation_metrics.save_rewards(episode_counter, simulation.rewards)
+                    simulation_metrics.save_sigmas(episode_counter, simulation.sigmas)
+                    simulation.rewards = []
+                    simulation.sigmas = []
+                episode_counter += 1
+                # simulation_metrics.save_weights(agent.get_weights())
 
     def _create_current_state(self, tracker, agent, last_bearing_measurement):
         # create current state s(t): target_state + sensor_state + bearing measurement + range
@@ -114,54 +112,29 @@ class _OTPSimulation:
 class _OTPSimulationEpisode:
     def __init__(self, gamma):
         self._gamma = gamma  # discount factor
-        self.is_valid = True
         self.discounted_return = np.array([])
         self.discount_vector = np.array([])
         self.reward = []
         self.uncertainty = []
         self.states = []
-        self.location_mse = []
 
     def linear_lsq(self,batch):
         x = np.array(range(0, len(batch)))
         A = np.vstack([x, np.ones(len(x))]).T
         m, c = np.linalg.lstsq(A, batch)[0]
-        return (m, c)
-
-    def update_reward_by_location_mse(self, simulation, target, tracker):
-        true_target_location = target.get_current_location()
-        target_location_estimate = tracker.get_target_state_estimate()[0:2].reshape(2)
-        mse = self.mse(target_location_estimate, true_target_location)
-        self.location_mse.append(mse)
-        if len(self.location_mse) < simulation.window_size + simulation.window_lag:
-            self.reward.append(0)
-        else:
-            current_avg = np.mean(self.location_mse[-simulation.window_size:])
-            prev_avg = np.mean(self.location_mse[-(simulation.window_size + simulation.window_lag):-simulation.window_lag])
-            if current_avg < prev_avg:
-                self.reward.append(1)
-            else:
-                self.reward.append(0)
+        return m, c
 
     def update_reward_by_uncertainty(self, simulation, tracker):
         unnormalized_uncertainty = np.sum(tracker.get_estimation_error_covariance_matrix().diagonal())
         # reward: see if the uncertainty has decayed or if it has gone below a certain value
         self.uncertainty.append((1.0/tracker.get_max_uncertainty()) * unnormalized_uncertainty)
-        #self.reward.append(2.0/(1+np.exp(10*self.uncertainty[-1])))
-
         if len(self.uncertainty) < simulation.window_size + simulation.window_lag:
             self.reward.append(0)
         else:
-            current_avg = np.mean(self.uncertainty[-simulation.window_size:])
-            prev_avg = np.mean(self.uncertainty[-(simulation.window_size + simulation.window_lag):-simulation.window_lag])
-            # if current_avg<prev_avg:
             slope, c = self.linear_lsq(self.uncertainty[-100:])
-            if self.uncertainty[-1]<self.uncertainty[-2] or (slope < 1E-4 and c < .1):
-                # if current_avg_error<prev_avg_erroror or pos_error[-1]<3:
-                # if current_avg < prev_avg:
+            if self.uncertainty[-1] < self.uncertainty[-2] or (slope < 1E-4 and c < .1):
                 self.reward.append(1)
             else:
-                # reward.append(2.0 / (1 + np.exp(100 * current_avg)))
                 self.reward.append(0)
 
     def update_reward_by_trace(self, tracker):
@@ -189,5 +162,3 @@ class _OTPSimulationEpisode:
         list_discount_vector.append(1)
         self.discount_vector = np.array(list_discount_vector)
 
-    def mse(self, x, y):
-        return ((x - y) ** 2).mean()
