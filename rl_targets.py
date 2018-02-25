@@ -8,21 +8,21 @@ class ConstantVelocityTarget:
         self._motion_model = ConstantVelocityMotionModel()
         # initialize target location (x, y) and velocity (x_dot, y_dot)
         if init_pos is None:
-            self._x = 2000 * random.random() - 1000
-            self._y = 2000 * random.random() - 1000
+            x = 2000 * random.random() - 1000
+            y = 2000 * random.random() - 1000
         else:
-            self._x = init_pos[0]
-            self._y = init_pos[1]
+            x = init_pos[0]
+            y = init_pos[1]
         if init_vel is None:
-            self._x_dot = 10 * random.random() - 5
-            self._y_dot = 10 * random.random() - 5
+            x_dot = 10 * random.random() - 5
+            y_dot = 10 * random.random() - 5
         else:
-            self._x_dot = init_vel[0]
-            self._y_dot = init_vel[1]
-        self._initial_location = [self._x, self._y]
+            x_dot = init_vel[0]
+            y_dot = init_vel[1]
+        self._initial_location = [x, y]
         self._current_location = self._initial_location
         self._historical_location = [self._initial_location]
-        self._initial_velocity = [self._x_dot, self._y_dot]
+        self._initial_velocity = [x_dot, y_dot]
         self._current_velocity = self._initial_velocity
         self._historical_velocity = [self._initial_velocity]
         self._x_variance = x_variance
@@ -32,10 +32,16 @@ class ConstantVelocityTarget:
         return self._motion_model.move()
 
     def get_x(self):
-        return self._x
+        return self._current_location[0]
 
     def get_y(self):
-        return self._y
+        return self._current_location[1]
+
+    def get_x_dot(self):
+        return self._current_velocity[0]
+
+    def get_y_dot(self):
+        return self._current_velocity[1]
 
     def get_x_variance(self):
         return self._x_variance
