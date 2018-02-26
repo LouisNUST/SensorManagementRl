@@ -1,10 +1,8 @@
 from rl_simulator import OTPSimulator
 from rl_environment import OTPEnvironment
-from rl_featurizers import RBFFeaturizer
 from rl_sensors import *
 from rl_targets import ConstantVelocityTarget
 from rl_metrics import SimulationMetrics
-from rl_optimization import PolicyGradientParameterUpdater
 
 import tensorflow as tf
 
