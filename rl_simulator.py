@@ -1,18 +1,21 @@
 import numpy as np
 from rl_trackers import EKFTracker
 from rl_metrics import EpisodeMetrics
+from rl_rewards import RewardByTrace
 
 
 class OTPSimulator:
-    def __init__(self, max_num_episodes, episode_length):
+    def __init__(self, max_num_episodes, episode_length, use_true_target_state=False):
         self._max_num_episodes = max_num_episodes
         self._episode_length = episode_length
+        self._use_true_target_state = use_true_target_state
 
-    def simulate(self, environment, agent, featurizer, simulation_metrics, target_factory):
-        simulation = _OTPSimulation(window_size=50, window_lag=10)
+    def simulate(self, environment, agent, featurizer, simulation_metrics, target_factory,
+                 reward_strategy=RewardByTrace(), gamma=.99):
+        simulation = _OTPSimulation()
         episode_counter = 0
         while episode_counter < self._max_num_episodes:
-            episode = _OTPSimulationEpisode(gamma=.99)
+            episode = _OTPSimulationEpisode(gamma=gamma, reward_strategy=reward_strategy)
             episode_metrics = EpisodeMetrics()
             target = target_factory()
             A, B = target.move()
@@ -23,15 +26,14 @@ class OTPSimulator:
                 target.update_location()
                 environment.generate_bearing(target.get_current_location(), agent.get_current_location())
                 tracker.update_states(agent.get_current_location(), environment.get_last_bearing_measurement())
-                current_state = self._create_current_state(tracker, agent, environment.get_last_bearing_measurement())
+                current_state = self._create_current_state(tracker, agent, environment.get_last_bearing_measurement(), target)
                 current_state = self._normalize_state(current_state, environment)
                 if featurizer is not None:
                     current_state = featurizer.transform(current_state)
                 # update the location of sensor based on the current state
                 agent.update_location(np.array(current_state))
                 episode.states.append(current_state)
-                # episode.update_reward_by_uncertainty(simulation, tracker)
-                episode.update_reward_by_trace(tracker)
+                episode.update_reward(agent, tracker)
                 episode.update_discounted_return()
                 episode_metrics.save(episode_step_counter, tracker, target, agent, environment.get_last_bearing_measurement())
                 if episode_step_counter > self._episode_length:
@@ -56,9 +58,12 @@ class OTPSimulator:
                 episode_counter += 1
                 # simulation_metrics.save_weights(agent.get_weights())
 
-    def _create_current_state(self, tracker, agent, last_bearing_measurement):
+    def _create_current_state(self, tracker, agent, last_bearing_measurement, target):
         # create current state s(t): target_state + sensor_state + bearing measurement + range
-        target_state = list(tracker.get_target_state_estimate().reshape(len(tracker.get_target_state_estimate())))
+        if self._use_true_target_state:
+            target_state = [target.get_x(), target.get_y(), target.get_x_dot(), target.get_y_dot()]
+        else:
+            target_state = list(tracker.get_target_state_estimate().reshape(len(tracker.get_target_state_estimate())))
         agent_state = list(agent.get_current_location())
         agent_to_target_estimate_range = [np.linalg.norm(agent.get_current_location() - tracker.get_target_state_estimate()[0:2])]
         return target_state + agent_state + [last_bearing_measurement] + agent_to_target_estimate_range
@@ -94,54 +99,22 @@ class OTPSimulator:
 
 
 class _OTPSimulation:
-    def __init__(self, window_size, window_lag):
-        self.window_size = window_size
-        self.window_lag = window_lag
+    def __init__(self):
         self.rewards = []
         self.sigmas = []
 
 
 class _OTPSimulationEpisode:
-    def __init__(self, gamma):
+    def __init__(self, gamma, reward_strategy):
         self._gamma = gamma  # discount factor
         self.discounted_return = np.array([])
         self.discount_vector = np.array([])
+        self.reward_strategy = reward_strategy
         self.reward = []
-        self.uncertainty = []
         self.states = []
 
-    def linear_lsq(self,batch):
-        x = np.array(range(0, len(batch)))
-        A = np.vstack([x, np.ones(len(x))]).T
-        m, c = np.linalg.lstsq(A, batch)[0]
-        return m, c
-
-    def update_reward_by_uncertainty(self, simulation, tracker):
-        unnormalized_uncertainty = np.sum(tracker.get_estimation_error_covariance_matrix().diagonal())
-        # reward: see if the uncertainty has decayed or if it has gone below a certain value
-        self.uncertainty.append((1.0/tracker.get_max_uncertainty()) * unnormalized_uncertainty)
-        if len(self.uncertainty) < simulation.window_size + simulation.window_lag:
-            self.reward.append(0)
-        else:
-            slope, c = self.linear_lsq(self.uncertainty[-100:])
-            if self.uncertainty[-1] < self.uncertainty[-2] or (slope < 1E-4 and c < .1):
-                self.reward.append(1)
-            else:
-                self.reward.append(0)
-
-    def update_reward_by_trace(self, tracker):
-        error_trace = np.trace(tracker.get_estimation_error_covariance_matrix())
-        self.uncertainty.append(error_trace)
-        if len(self.uncertainty) == 1:
-            self.reward.append(0)
-            return
-        error_trace_diff = self.uncertainty[-1] - self.uncertainty[-2]
-        if error_trace_diff < 0:
-            self.reward.append(1)
-        elif error_trace_diff == 0:
-            self.reward.append(0)
-        elif error_trace_diff > 0:
-            self.reward.append(-1)
+    def update_reward(self, sensor, tracker):
+        self.reward.append(self.reward_strategy.get_reward(sensor, tracker))
 
     def update_discounted_return(self):
         self.discount_vector = self._gamma * np.array(self.discount_vector)
@@ -153,4 +126,3 @@ class _OTPSimulationEpisode:
         list_discount_vector = list(self.discount_vector)
         list_discount_vector.append(1)
         self.discount_vector = np.array(list_discount_vector)
-
