@@ -6,7 +6,8 @@ import tensorflow as tf
 
 class TFNeuralNetStochasticPolicyOTPSensor:
     def __init__(self, num_input, init_learning_rate=1e-6, min_learning_rate=1e-10, learning_rate_N_max=10000,
-                 sigma=None, shuffle=True, batch_size=1, init_pos=None, non_linearity=tf.nn.tanh, clip_norm=5.0):
+                 sigma=None, shuffle=True, batch_size=1, init_pos=None, non_linearity=tf.nn.tanh, clip_norm=5.0,
+                 reduction=None, optimizer=tf.train.GradientDescentOptimizer):
         self._sess = tf.Session()
         dtype = tf.float32
         self._states = tf.placeholder(dtype, (None, num_input), name="states")
@@ -51,7 +52,7 @@ class TFNeuralNetStochasticPolicyOTPSensor:
         else:
             self._sigma = tf.constant(sigma, dtype=dtype)
 
-        self._optimizer = tf.train.GradientDescentOptimizer(learning_rate=self._learning_rate)
+        self._optimizer = optimizer(learning_rate=self._learning_rate)
 
         self._discounted_rewards = tf.placeholder(dtype, (None, 1), name="discounted_rewards")
         self._taken_actions = tf.placeholder(dtype, (None, 2), name="taken_actions")
@@ -62,8 +63,16 @@ class TFNeuralNetStochasticPolicyOTPSensor:
         # we'll get the policy gradient by using -log(pdf), where pdf is the PDF of the Normal distribution
         self._loss = -tf.log(tf.sqrt(1/(2 * np.pi * self._sigma**2)) * tf.exp(-(self._taken_actions - self._mu)**2/(2 * self._sigma**2))) * self._discounted_rewards
 
+        if reduction is not None:
+            self._loss = reduction(self._loss)
+
         if clip_norm is None:
             self._train_op = self._optimizer.minimize(self._loss)
+            # self._gradients = self._optimizer.compute_gradients(self._loss)
+            # for i, (grad, var) in enumerate(self._gradients):
+            #     if grad is not None:
+            #         self._gradients[i] = (grad / batch_size, var)
+            # self._train_op = self._optimizer.apply_gradients(self._gradients)
         else:
             self._gradients, variables = zip(*self._optimizer.compute_gradients(self._loss))
             self._gradients, _ = tf.clip_by_global_norm(self._gradients, self._clip_norm)

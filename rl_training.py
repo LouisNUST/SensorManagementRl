@@ -30,14 +30,18 @@ if __name__ == "__main__":
     learning_rate_N_max = 3000
     sensor_sigma = 1
     shuffle = True
-    batch_size = 64
+    batch_size = 32
+    reduction = tf.reduce_mean
     non_linearity = tf.nn.tanh
     clip_norm = 5.0
+    optimizer = tf.train.GradientDescentOptimizer
     featurizer = None
 
     sensor_init_pos = [2000, 0]
     target_init_pos = [0, 0]
     target_init_vel = [5, 5]
+    target_x_variance = 0
+    target_y_variance = 0
 
     bearing_variance = 1e-2
 
@@ -48,7 +52,8 @@ if __name__ == "__main__":
                                                  min_learning_rate=min_learning_rate,
                                                  learning_rate_N_max=learning_rate_N_max, sigma=sensor_sigma,
                                                  shuffle=shuffle, batch_size=batch_size, init_pos=sensor_init_pos,
-                                                 non_linearity=non_linearity, clip_norm=clip_norm)
+                                                 non_linearity=non_linearity, clip_norm=clip_norm, reduction=reduction,
+                                                 optimizer=optimizer)
 
     environment = OTPEnvironment(bearing_variance=bearing_variance)
 
@@ -58,6 +63,7 @@ if __name__ == "__main__":
                                            filename=str(agent) + '.txt')
 
     simulator.simulate(environment, agent, featurizer, simulation_metrics=simulation_metrics,
-                       target_factory=lambda: ConstantVelocityTarget(init_pos=target_init_pos, init_vel=target_init_vel))
+                       target_factory=lambda: ConstantVelocityTarget(init_pos=target_init_pos, init_vel=target_init_vel,
+                                                                     x_variance=target_x_variance, y_variance=target_y_variance))
 
     simulation_metrics.close_files()
