@@ -70,11 +70,6 @@ class TFNeuralNetStochasticPolicyOTPSensor:
 
         if clip_norm is None:
             self._train_op = self._optimizer.minimize(self._loss)
-            # self._gradients = self._optimizer.compute_gradients(self._loss)
-            # for i, (grad, var) in enumerate(self._gradients):
-            #     if grad is not None:
-            #         self._gradients[i] = (grad / batch_size, var)
-            # self._train_op = self._optimizer.apply_gradients(self._gradients)
         else:
             self._gradients, variables = zip(*self._optimizer.compute_gradients(self._loss))
             self._gradients, _ = tf.clip_by_global_norm(self._gradients, self._clip_norm)

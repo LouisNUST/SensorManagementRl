@@ -6,7 +6,8 @@ import tensorflow as tf
 
 class TFNeuralNetDistStochasticPolicyOTPSensor:
     def __init__(self, num_input, init_learning_rate=1e-6, min_learning_rate=1e-10, learning_rate_N_max=10000,
-                 sigma=None, shuffle=True, batch_size=1, init_pos=None, non_linearity=tf.nn.tanh, clip_norm=5.0):
+                 sigma=None, shuffle=True, batch_size=1, init_pos=None, non_linearity=tf.nn.tanh, clip_norm=5.0,
+                 reduction=None, reg_loss_factor=None, optimizer=tf.train.GradientDescentOptimizer):
         self._sess = tf.Session()
         dtype = tf.float32
         self._states = tf.placeholder(dtype, (None, num_input), name="states")
@@ -51,7 +52,7 @@ class TFNeuralNetDistStochasticPolicyOTPSensor:
         else:
             self._sigma = tf.constant(sigma, dtype=dtype)
 
-        self._optimizer = tf.train.GradientDescentOptimizer(learning_rate=self._learning_rate)
+        self._optimizer = optimizer(learning_rate=self._learning_rate)
 
         self._discounted_rewards = tf.placeholder(dtype, (None, 1), name="discounted_rewards")
         self._taken_actions = tf.placeholder(dtype, (None, 2), name="taken_actions")
@@ -61,6 +62,14 @@ class TFNeuralNetDistStochasticPolicyOTPSensor:
         self._action = self._dist._sample_n(1)
 
         self._loss = -self._dist.log_prob(self._taken_actions) * self._discounted_rewards
+
+        if reg_loss_factor is not None:
+            self._network_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="network_variables")
+            self._reg_loss = tf.reduce_sum([tf.reduce_sum(tf.square(x)) for x in self._network_variables])
+            self._loss -= reg_loss_factor * self._reg_loss
+
+        if reduction is not None:
+            self._loss = reduction(self._loss)
 
         if clip_norm is None:
             self._train_op = self._optimizer.minimize(self._loss)
