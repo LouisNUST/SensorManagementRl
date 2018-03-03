@@ -12,7 +12,7 @@ class OTPSimulator:
         self._state_size = state_size
 
     def simulate(self, environment, agent, featurizer, simulation_metrics, target_factory,
-                 reward_strategy=RewardByTrace(), gamma=.99):
+                 reward_strategy=RewardByTrace(), gamma=.99, reward_printer=None):
         simulation = _OTPSimulation()
         episode_counter = 0
         while episode_counter < self._max_num_episodes:
@@ -31,7 +31,6 @@ class OTPSimulator:
                 current_state = self._normalize_state(current_state, environment)
                 if featurizer is not None:
                     current_state = featurizer.transform(current_state)
-                # update the location of sensor based on the current state
                 agent.update_location(np.array(current_state))
                 episode.states.append(current_state)
                 episode.update_reward(agent, tracker)
@@ -45,13 +44,12 @@ class OTPSimulator:
 
             if valid_update:
                 simulation.rewards.append(sum(episode.reward))
-                # print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
-                print("%s,%s" % (episode_counter, np.sum(episode.reward)))
+                if reward_printer is not None:
+                    reward_printer.print_reward(episode_counter, episode.reward)
                 simulation.sigmas.append(np.mean(agent.get_sigmas(), axis=0))
                 simulation_metrics.save_raw_reward(episode_counter, sum(episode.reward))
                 simulation_metrics.save_locations(episode_counter, episode_metrics)
                 if episode_counter % 100 == 0 and episode_counter > 0:
-                    # print("%s,%s" % (episode_counter, np.mean(simulation.rewards)))
                     simulation_metrics.save_rewards(episode_counter, simulation.rewards)
                     simulation_metrics.save_sigmas(episode_counter, simulation.sigmas)
                     simulation.rewards = []
