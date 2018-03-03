@@ -5,10 +5,11 @@ from rl_rewards import RewardByTrace
 
 
 class OTPSimulator:
-    def __init__(self, max_num_episodes, episode_length, use_true_target_state=False):
+    def __init__(self, max_num_episodes, episode_length, state_size=7, use_true_target_state=False):
         self._max_num_episodes = max_num_episodes
         self._episode_length = episode_length
         self._use_true_target_state = use_true_target_state
+        self._state_size = state_size
 
     def simulate(self, environment, agent, featurizer, simulation_metrics, target_factory,
                  reward_strategy=RewardByTrace(), gamma=.99):
@@ -84,16 +85,27 @@ class OTPSimulator:
         state[2] = np.clip(state[2], environment.get_vel_min(), environment.get_vel_max())
         state[3] = np.clip(state[3], environment.get_vel_min(), environment.get_vel_max())
 
-        new_state = [None]*7
-        # normalization (map each value to the bound (-1,1)
-        new_state[0] = -1 + x_slope * (state[0] - environment.get_x_min())
-        new_state[1] = -1 + y_slope * (state[1] - environment.get_y_min())
-        new_state[2] = -1 + vel_slope * (state[2] - environment.get_vel_min())
-        new_state[3] = -1 + vel_slope * (state[3] - environment.get_vel_min())
-        new_state[4] = -1 + x_slope * (state[4] - environment.get_x_min())
-        new_state[5] = -1 + y_slope * (state[5] - environment.get_y_min())
-        new_state[6] = np.clip(-1 + measure_slope * state[6], -1., 1.)
-        # new_state[7] = -1 + distance_slope * state[7]
+        if self._state_size == 7:
+            new_state = [None]*7
+            # normalization (map each value to the bound (-1,1)
+            new_state[0] = -1 + x_slope * (state[0] - environment.get_x_min())
+            new_state[1] = -1 + y_slope * (state[1] - environment.get_y_min())
+            new_state[2] = -1 + vel_slope * (state[2] - environment.get_vel_min())
+            new_state[3] = -1 + vel_slope * (state[3] - environment.get_vel_min())
+            new_state[4] = -1 + x_slope * (state[4] - environment.get_x_min())
+            new_state[5] = -1 + y_slope * (state[5] - environment.get_y_min())
+            new_state[6] = np.clip(-1 + measure_slope * state[6], -1., 1.)
+            # new_state[7] = -1 + distance_slope * state[7]
+        elif self._state_size == 5:
+            new_state = [None]*5
+            # normalization (map each value to the bound (-1,1)
+            new_state[0] = -1 + x_slope * (state[0] - environment.get_x_min())
+            new_state[1] = -1 + y_slope * (state[1] - environment.get_y_min())
+            new_state[2] = -1 + x_slope * (state[4] - environment.get_x_min())
+            new_state[3] = -1 + y_slope * (state[5] - environment.get_y_min())
+            new_state[4] = np.clip(-1 + measure_slope * state[6], -1., 1.)
+        else:
+            raise Exception("unsupported state size: %s" % self._state_size)
 
         return new_state
 

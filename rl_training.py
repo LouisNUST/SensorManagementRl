@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
     environment = OTPEnvironment(bearing_variance=bearing_variance)
 
-    simulator = OTPSimulator(max_num_episodes=max_num_episodes, episode_length=episode_length,
+    simulator = OTPSimulator(max_num_episodes=max_num_episodes, episode_length=episode_length, state_size=num_input,
                              use_true_target_state=use_true_target_state)
 
     simulation_metrics = SimulationMetrics(base_path="/Users/u6046782/SensorManagementRl/out/",
