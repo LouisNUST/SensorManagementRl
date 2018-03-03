@@ -1,3 +1,4 @@
+from .base_reward_printer import BaseRewardPrinter
 from .raw_reward_printer import RawRewardPrinter
 from .running_average_reward_printer import RunningAverageRewardPrinter
 from .periodic_average_reward_printer import PeriodicAverageRewardPrinter

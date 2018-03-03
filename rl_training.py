@@ -4,6 +4,7 @@ from rl_sensors import *
 from rl_targets import ConstantVelocityTarget
 from rl_metrics import SimulationMetrics
 from rl_rewards import *
+from rl_utils import *
 
 import tensorflow as tf
 
@@ -53,6 +54,7 @@ if __name__ == "__main__":
 
     gamma = .99
     reward_strategy = RewardByTrace()
+    reward_printer = PeriodicAverageRewardPrinter(window=10)
 
     agent = TFNeuralNetStochasticPolicyOTPSensor(num_input=num_input, init_learning_rate=init_learning_rate,
                                                  min_learning_rate=min_learning_rate,
@@ -72,6 +74,6 @@ if __name__ == "__main__":
     simulator.simulate(environment, agent, featurizer, simulation_metrics=simulation_metrics,
                        target_factory=lambda: ConstantVelocityTarget(init_pos=target_init_pos, init_vel=target_init_vel,
                                                                      x_variance=target_x_variance, y_variance=target_y_variance),
-                       reward_strategy=reward_strategy, gamma=gamma)
+                       reward_strategy=reward_strategy, gamma=gamma, reward_printer=reward_printer)
 
     simulation_metrics.close_files()
