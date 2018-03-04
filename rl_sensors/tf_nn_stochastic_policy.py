@@ -7,7 +7,7 @@ import tensorflow as tf
 class TFNeuralNetStochasticPolicyOTPSensor:
     def __init__(self, num_input, init_learning_rate=1e-6, min_learning_rate=1e-10, learning_rate_N_max=10000,
                  sigma=None, shuffle=True, batch_size=1, init_pos=None, non_linearity=tf.nn.tanh, clip_norm=5.0,
-                 reduction=None, reg_loss_factor=None, optimizer=tf.train.GradientDescentOptimizer):
+                 reduction=None, reg_loss_factor=None, optimizer=tf.train.GradientDescentOptimizer, batch_norm=True):
         self._sess = tf.Session()
         dtype = tf.float32
         self._states = tf.placeholder(dtype, (None, num_input), name="states")
@@ -22,6 +22,8 @@ class TFNeuralNetStochasticPolicyOTPSensor:
         self._sigma_theta_hidden = 100
         self._layer1_hidden = 1600
         self._layer2_hidden = self._mu_theta_hidden
+
+        self._is_training = False
 
         with tf.name_scope("network_variables"):
             # policy parameters
@@ -38,11 +40,15 @@ class TFNeuralNetStochasticPolicyOTPSensor:
             self._b1 = tf.get_variable("b1", [self._layer1_hidden],
                                        initializer=tf.constant_initializer(0), dtype=dtype)
             self._h1 = non_linearity(tf.matmul(self._states, self._W1) + self._b1)
+            if batch_norm:
+                self._h1 = self._batch_norm(self._h1, self._is_training)
             self._W2 = tf.get_variable("W2", [self._layer1_hidden, self._layer2_hidden],
                                        initializer=tf.random_normal_initializer(stddev=0.1), dtype=dtype)
             self._b2 = tf.get_variable("b2", [self._layer2_hidden],
                                        initializer=tf.constant_initializer(0), dtype=dtype)
             self._phi = non_linearity(tf.matmul(self._h1, self._W2) + self._b2)
+            if batch_norm:
+                self._phi = self._batch_norm(self._phi, self._is_training)
 
         self._mu = tf.matmul(self._phi, tf.transpose(self._mu_theta))
 
@@ -99,8 +105,24 @@ class TFNeuralNetStochasticPolicyOTPSensor:
         self._sensor_actions = []
         self._sensor_sigmas = []
 
+    def _batch_norm(self, inputs, is_training, decay=0.999, epsilon=1e-3):
+        scale = tf.Variable(tf.ones([inputs.get_shape()[-1]]))
+        beta = tf.Variable(tf.zeros([inputs.get_shape()[-1]]))
+        pop_mean = tf.Variable(tf.zeros([inputs.get_shape()[-1]]), trainable=False)
+        pop_var = tf.Variable(tf.ones([inputs.get_shape()[-1]]), trainable=False)
+
+        if is_training:
+            batch_mean, batch_var = tf.nn.moments(inputs,[0])
+            train_mean = tf.assign(pop_mean, pop_mean * decay + batch_mean * (1 - decay))
+            train_var = tf.assign(pop_var, pop_var * decay + batch_var * (1 - decay))
+            with tf.control_dependencies([train_mean, train_var]):
+                return tf.nn.batch_normalization(inputs, batch_mean, batch_var, beta, scale, epsilon)
+        else:
+            return tf.nn.batch_normalization(inputs, pop_mean, pop_var, beta, scale, epsilon)
+
     def update_location(self, system_state):
         # Gaussian policy
+        self._is_training = False
         mu, sigma = self._sess.run([self._mu, self._sigma], feed_dict={
             self._states: np.reshape(system_state, (1, self._num_input))
         })
@@ -157,6 +179,7 @@ class TFNeuralNetStochasticPolicyOTPSensor:
 
         batches = list(self._minibatches(all_samples, batch_size=self._batch_size))
 
+        self._is_training = True
         for b in range(len(batches)):
             # prepare inputs
             batch = batches[b]

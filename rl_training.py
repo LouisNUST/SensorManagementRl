@@ -38,6 +38,7 @@ if __name__ == "__main__":
     non_linearity = tf.nn.tanh
     clip_norm = 5.0
     optimizer = tf.train.GradientDescentOptimizer
+    batch_norm = True
     featurizer = None
 
     sensor_init_pos = [2000, 0]
@@ -61,7 +62,7 @@ if __name__ == "__main__":
                                                  learning_rate_N_max=learning_rate_N_max, sigma=sensor_sigma,
                                                  shuffle=shuffle, batch_size=batch_size, init_pos=sensor_init_pos,
                                                  non_linearity=non_linearity, clip_norm=clip_norm, reduction=reduction,
-                                                 reg_loss_factor=reg_loss_factor, optimizer=optimizer)
+                                                 reg_loss_factor=reg_loss_factor, optimizer=optimizer, batch_norm=batch_norm)
 
     environment = OTPEnvironment(bearing_variance=bearing_variance)
 
