@@ -34,7 +34,7 @@ class OTPSimulator:
                     current_state = featurizer.transform(current_state)
                 agent.update_location(np.array(current_state))
                 episode.states.append(current_state)
-                episode.update_reward(agent, tracker)
+                episode.update_reward(agent, target, tracker)
                 episode.update_discounted_return()
                 episode_metrics.save(episode_step_counter, tracker, target, agent, environment.get_last_bearing_measurement())
                 if episode_step_counter > self._episode_length:
@@ -123,8 +123,8 @@ class _OTPSimulationEpisode:
         self.reward = []
         self.states = []
 
-    def update_reward(self, sensor, tracker):
-        self.reward.append(self.reward_strategy.get_reward(sensor, tracker))
+    def update_reward(self, sensor, target, tracker):
+        self.reward.append(self.reward_strategy.get_reward(sensor, target, tracker))
 
     def update_discounted_return(self):
         self.discount_vector = self._gamma * np.array(self.discount_vector)

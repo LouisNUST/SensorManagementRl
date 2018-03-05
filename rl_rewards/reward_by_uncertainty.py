@@ -13,7 +13,7 @@ class RewardByUncertainty:
         m, c = np.linalg.lstsq(A, batch)[0]
         return m, c
 
-    def get_reward(self, sensor, tracker):
+    def get_reward(self, sensor, target, tracker):
         unnormalized_uncertainty = np.sum(tracker.get_estimation_error_covariance_matrix().diagonal())
         # reward: see if the uncertainty has decayed or if it has gone below a certain value
         self._uncertainty.append((1.0/tracker.get_max_uncertainty()) * unnormalized_uncertainty)

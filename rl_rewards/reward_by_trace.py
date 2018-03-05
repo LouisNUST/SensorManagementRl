@@ -5,7 +5,7 @@ class RewardByTrace:
     def __init__(self):
         self._uncertainty = []
 
-    def get_reward(self, sensor, tracker):
+    def get_reward(self, sensor, target, tracker):
         error_trace = np.trace(tracker.get_estimation_error_covariance_matrix())
         self._uncertainty.append(error_trace)
         if len(self._uncertainty) == 1:
