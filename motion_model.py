@@ -7,8 +7,11 @@ class motion_model:
         self.constant_turn_type = "CONS_TURN"
         self.binary_command_type = "BINARY_COMM"
         self.policy_command_type = "POLICY_COMM"
-        self.policy_command_type_DET = "POLICY_COMM_DET"
-        self.random = "RANDOM"
+        self.policy_command_type_linear = "POLICY_COMM_LINEAR"
+        self.policy_command_type_RBF = "POLICY_COMM_RBF"
+        self.policy_command_type_MLP = "POLICY_COMM_MLP"
+        self.policy_command_type_RANDOM = "POLICY_COMM_RANDOM"
+
         self.T = sample_time
 
     def constant_velocity(self,heading_rate):

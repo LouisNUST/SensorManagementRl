@@ -5,12 +5,15 @@ from motion_init_object import motion_init_object
 
 import matplotlib.pyplot as plt
 
+
+
 class sensor(motion_model,motion_init_object):
     def __init__(self,type):
         motion_model.__init__(self,1)
         motion_init_object.__init__(self)
 
         initial_location = [self.init_x,self.init_y]
+        #initial_location = [X, Y]
         mean_x_vel = self.init_xdot
         mean_y_vel = self.init_ydot
         mean_x_acc = self.init_xdotdot
@@ -50,8 +53,10 @@ class sensor(motion_model,motion_init_object):
         self.historical_command = [self.initial_command]
 
         self.motion_type = type
-
         self.sensor_actions = []
+
+    def sigmoid(self,x, derivative=False):
+        return self.sigmoid(x) * (1 - self.sigmoid(x)) if derivative else 1 / (1 + np.exp(-x))
 
     def plot_sensor_trajectory(self):
         x = []
@@ -64,6 +69,92 @@ class sensor(motion_model,motion_init_object):
         plt.grid(True)
         plt.show()
 
+    def generate_action(self,params,state,sigma):
+        if self.motion_type==self.policy_command_type_linear:
+            weight = params[0]['weight']
+            Delta = np.random.normal(weight.dot(state), sigma)
+            return (Delta)
+        elif self.motion_type==self.policy_command_type_RBF:
+            weight = params[1]['weight']
+            Delta = np.random.normal(weight.dot(state), sigma)
+            return (Delta)
+
+        elif self.motion_type==self.policy_command_type_MLP:
+            weight1 = params[2]['weight1']
+            weight2 = params[2]['weight2']
+            bias1 = params[2]['bias1']
+            bias2 = params[2]['bias2']
+
+            layer1_output = self.sigmoid(weight1.dot(state)+bias1)
+            layer2_output = weight2.dot(layer1_output)+bias2
+            Delta = np.random.normal(layer2_output.reshape([2]),sigma)
+
+            return (Delta)
+
+    def update_location_decentralized(self,actions):
+
+        final_action = np.mean(actions,axis=0)
+        self.sensor_actions.append(final_action)
+        new_x = self.current_location[0] + final_action[0]
+        new_y = self.current_location[1] + final_action[1]
+        self.current_location = [new_x, new_y]
+        self.historical_location.append(self.current_location)
+
+
+    def update_location_new(self,params,state,sigma):
+
+        if self.motion_type==self.policy_command_type_linear:
+            weight = params[0]['weight']
+            Delta = np.random.normal(weight.dot(state), sigma)
+            self.sensor_actions.append(Delta)
+            # Delta = np.random.normal(np.zeros([2]),sigma)
+            new_x = self.current_location[0] + Delta[0]
+            new_y = self.current_location[1] + Delta[1]
+            self.current_location = [new_x, new_y]
+            self.historical_location.append(self.current_location)
+            return (None)
+        elif self.motion_type==self.policy_command_type_RBF:
+            weight = params[1]['weight']
+            Delta = np.random.normal(weight.dot(state), sigma)
+            self.sensor_actions.append(Delta)
+            # Delta = np.random.normal(np.zeros([2]),sigma)
+            new_x = self.current_location[0] + Delta[0]
+            new_y = self.current_location[1] + Delta[1]
+            self.current_location = [new_x, new_y]
+            self.historical_location.append(self.current_location)
+            return (None)
+
+        elif self.motion_type==self.policy_command_type_MLP:
+            weight1 = params[2]['weight1']
+            weight2 = params[2]['weight2']
+            bias1 = params[2]['bias1']
+            bias2 = params[2]['bias2']
+
+            layer1_output = self.sigmoid(weight1.dot(state)+bias1)
+            layer2_output = weight2.dot(layer1_output)+bias2
+            Delta = np.random.normal(layer2_output.reshape([2]),sigma)
+            self.sensor_actions.append(Delta)
+            # Delta = np.random.normal(np.zeros([2]),sigma)
+            new_x = self.current_location[0] + Delta[0]
+            new_y = self.current_location[1] + Delta[1]
+            self.current_location = [new_x, new_y]
+            self.historical_location.append(self.current_location)
+            return (layer1_output)
+
+        elif self.motion_type==self.policy_command_type_RANDOM:
+            Delta = np.random.normal(np.zeros([2]), sigma)
+            self.sensor_actions.append(Delta)
+            # Delta = np.random.normal(np.zeros([2]),sigma)
+            new_x = self.current_location[0] + Delta[0]
+            new_y = self.current_location[1] + Delta[1]
+            self.current_location = [new_x, new_y]
+            self.historical_location.append(self.current_location)
+            return (None)
+
+
+
+
+
     def update_location(self,weight,sigma,state):
 
         new_command = np.random.multinomial(1,np.array([1,1,1])/3.0).argmax()
@@ -71,7 +162,7 @@ class sensor(motion_model,motion_init_object):
 
         if self.motion_type==self.constant_turn_type:
             #generate values for both the heading and speed
-            heading = np.random.normal(np.sum(weight*state),sigma)
+            heading = self.heading_rate
 
             #This is constant-turn model
             new_x = self.current_location[0] + self.T*self.current_speed[0]*np.cos(heading)
@@ -87,25 +178,14 @@ class sensor(motion_model,motion_init_object):
             self.historical_speed.append(self.current_speed)
             self.historical_heading.append(self.current_heading)
         elif self.motion_type==self.policy_command_type:
-
-            #x_displacement = np.random.normal(weight.dot(state),sigma)
-            #y_displacemnt = np.random.normal(weight.dot(state),sigma)
-            #Delta = [x_displacement,y_displacemnt]
             Delta =  np.random.normal(weight.dot(state),sigma)
             self.sensor_actions.append(Delta)
+            #Delta = np.random.normal(np.zeros([2]),sigma)
             new_x = self.current_location[0] + Delta[0]
             new_y = self.current_location[1] + Delta[1]
 
             self.current_location = [new_x,new_y]
             self.historical_location.append(self.current_location)
-
-        elif self.motion_type == self.random:
-            new_x = self.current_location[0] + np.random.normal(0,2)
-            new_y = self.current_location[1] + np.random.normal(0,2)
-
-            self.current_location = [new_x, new_y]
-            self.historical_location.append(self.current_location)
-
         else:
             if self.motion_type==self.constant_velocity_type:
                 A,B = self.constant_velocity(self.heading_rate)
@@ -138,7 +218,6 @@ class sensor(motion_model,motion_init_object):
 
             self.current_command = new_command
             self.historical_command.append(new_command)
-
 
 if __name__=="__main__":
     s = sensor([500,500],3,-2,.01,.01)

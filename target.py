@@ -26,11 +26,27 @@ class target(motion_model):
         if self.motion_type==self.constant_velocity_type:
             A,B = self.constant_velocity(1E-8)
 
+        #sigma_x = ((self.x_var)*abs(self.initial_velocity[0]))/20.0
+        #sigma_y = ((self.y_var) * abs(self.initial_velocity[1])) / 20.0
         noise_x = np.random.normal(0, self.x_var)
         noise_y = np.random.normal(0, self.y_var)
 
         current_state = [self.current_location[0],self.current_location[1],self.current_velocity[0],self.current_velocity[1]]
+        #current_state = [self.current_location[0], self.current_location[1], t_x_vel,
+         #                t_y_vel]
         new_state = A.dot(current_state)+B.dot(np.array([noise_x,noise_y]))#This is the new state
+
+
+        #if new_state[2]>0:
+         #   new_state[2] = max(min(new_state[2],self.initial_velocity[0]*(1+self.x_var)),self.initial_velocity[0]*(1-self.x_var))
+        #else:
+         #   new_state[2] = max(min(new_state[2], self.initial_velocity[0] * (1-self.x_var)), self.initial_velocity[0] * (1+self.x_var))
+
+        #if new_state[3]>0:
+         #   new_state[3] = max(min(new_state[3],self.initial_velocity[1]*(1+self.x_var)),self.initial_velocity[1]*(1-self.x_var))
+        #else:
+         #   new_state[3] = max(min(new_state[3], self.initial_velocity[1] * (1-self.x_var)), self.initial_velocity[1] * (1+self.x_var))
+
 
         new_location = [new_state[0],new_state[1]]
         self.current_location = new_location

@@ -26,8 +26,8 @@ class motion_init_object:
         self.init_speed = 10
         self.init_heading = -np.pi/6
 
-        self.heading_rate = 1E-6
-        self.heading_rate = 1E-2
+        self.heading_rate = .01*random.random()-.005
+        self.heading_rate = .03
 
         self.speed_std = 1
         self.heading_std = .001
