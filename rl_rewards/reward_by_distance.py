@@ -3,6 +3,9 @@ import numpy as np
 
 class RewardByDistance:
     def __init__(self):
+        self.reset()
+
+    def reset(self):
         pass
 
     def get_reward(self, sensor, target, tracker):

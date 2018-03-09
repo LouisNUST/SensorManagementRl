@@ -129,6 +129,7 @@ class _OTPSimulationEpisode:
         self.discounted_return = np.array([])
         self.discount_vector = np.array([])
         self.reward_strategy = reward_strategy
+        self.reward_strategy.reset()
         self.reward = []
         self.states = []
 

@@ -4,12 +4,13 @@ import numpy as np
 import tensorflow as tf
 
 
-class TFLinearStochasticPolicyOTPSensor:
+class TFLinearStochasticBatchPolicyOTPSensor:
     def __init__(self, num_input, init_learning_rate=1e-6, min_learning_rate=1e-10, learning_rate_N_max=10000,
-                 sigma=None, init_pos=None, optimizer=tf.train.GradientDescentOptimizer):
+                 sigma=None, shuffle=True, batch_size=1, reduction=None, init_pos=None,
+                 optimizer=tf.train.GradientDescentOptimizer):
         self._sess = tf.Session()
         dtype = tf.float32
-        self._states = tf.placeholder(dtype, [1, num_input], name="states")
+        self._states = tf.placeholder(dtype, (None, num_input), name="states")
 
         self._init_learning_rate = init_learning_rate
         self._min_learning_rate = min_learning_rate
@@ -18,28 +19,31 @@ class TFLinearStochasticPolicyOTPSensor:
 
         with tf.name_scope("network_variables"):
             # policy parameters
-            self._mu_theta = tf.get_variable("mu_theta", [2, num_input],
-                                             initializer=tf.random_normal_initializer(), dtype=dtype)
-            self._mu_bias = tf.get_variable("mu_bias", [2],
-                                            initializer=tf.constant_initializer(0), dtype=dtype)
+            self._mu_W = tf.get_variable("mu_W", [2, num_input],
+                                        initializer=tf.random_normal_initializer(), dtype=dtype)
+            self._mu_b = tf.get_variable("mu_b", [2],
+                                        initializer=tf.constant_initializer(0), dtype=dtype)
             if sigma is None:
-                self._sigma_theta = tf.get_variable("sigma_theta", [2, 1],
-                                                    initializer=tf.random_normal_initializer(), dtype=dtype)
+                self._sigma_W = tf.get_variable("sigma_W", [2],
+                                                initializer=tf.random_normal_initializer(), dtype=dtype)
 
-        self._mu = tf.matmul(self._states, tf.transpose(self._mu_theta)) + self._mu_bias
+        self._mu = tf.matmul(self._states, tf.transpose(self._mu_W)) + self._mu_b
 
         if sigma is None:
-            self._sigma = tf.nn.softplus(self._sigma_theta) + 1e-5 # tf.exp(self._sigma_theta)
+            self._sigma = tf.exp(self._sigma_W) #tf.nn.softplus(self._sigma_W) + 1e-5
         else:
             self._sigma = tf.constant(sigma, dtype=dtype)
 
         self._optimizer = optimizer(learning_rate=self._learning_rate)
 
-        self._discounted_rewards = tf.placeholder(dtype, [1, 1], name="discounted_rewards")
-        self._taken_actions = tf.placeholder(dtype, [1, 2], name="taken_actions")
+        self._discounted_rewards = tf.placeholder(dtype, (None, 1), name="discounted_rewards")
+        self._taken_actions = tf.placeholder(dtype, (None, 2), name="taken_actions")
 
         # we'll get the policy gradient by using -log(pdf), where pdf is the PDF of the Normal distribution
         self._loss = -tf.log(tf.sqrt(1/(2 * np.pi * self._sigma**2)) * tf.exp(-(self._taken_actions - self._mu)**2/(2 * self._sigma**2))) * self._discounted_rewards
+
+        if reduction is not None:
+            self._loss = reduction(self._loss)
 
         self._train_op = self._optimizer.minimize(self._loss)
 
@@ -49,6 +53,8 @@ class TFLinearStochasticPolicyOTPSensor:
         self._max_reward_length = 1000000
 
         self._sigma_in = sigma
+        self._shuffle = shuffle
+        self._batch_size = batch_size
         self._num_input = num_input
         self._init_pos = init_pos
         self.reset_location()
@@ -113,17 +119,22 @@ class TFLinearStochasticPolicyOTPSensor:
 
         all_samples = []
         for t in range(N-1):
-            state  = np.reshape(np.array(episode_states[t]), (1, self._num_input))
-            action = np.reshape(np.array(episode_actions[t][0]), (1, 2))
-            reward = np.reshape(np.array([discounted_return[t]]), (1, 1))
+            state  = np.reshape(np.array(episode_states[t]), self._num_input)
+            action = episode_actions[t][0]
+            reward = [discounted_return[t]]
             sample = [state, action, reward]
             all_samples.append(sample)
+        if self._shuffle:
+            np.random.shuffle(all_samples)
 
-        for sample in all_samples:
+        batches = list(self._minibatches(all_samples, batch_size=self._batch_size))
+
+        for b in range(len(batches)):
             # prepare inputs
-            states = sample[0]
-            actions = sample[1]
-            rewards = sample[2]
+            batch = batches[b]
+            states = [row[0] for row in batch]
+            actions = [row[1] for row in batch]
+            rewards = [row[2] for row in batch]
 
             self._sess.run([self._train_op], feed_dict={
                 self._states:             states,
@@ -132,6 +143,10 @@ class TFLinearStochasticPolicyOTPSensor:
                 self._learning_rate:      learning_rate
             })
         return True
+
+    def _minibatches(self, samples, batch_size):
+        for i in range(0, len(samples), batch_size):
+            yield samples[i:i + batch_size]
 
     def __str__(self):
         return self.__class__.__name__ + "_" + str(self._num_input) + "_" + str(self._init_learning_rate) + "_" + \

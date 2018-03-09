@@ -5,6 +5,9 @@ class RewardByUncertainty:
     def __init__(self, window_size=50, window_lag=10):
         self._window_size = window_size
         self._window_lag = window_lag
+        self.reset()
+
+    def reset(self):
         self._uncertainty = []
 
     def _linear_lsq(self, batch):
