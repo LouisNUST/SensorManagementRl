@@ -1,5 +1,5 @@
 from rl_simulator import OTPSimulator
-from rl_environment import OTPEnvironment
+from rl_simulator_environment import OTPSimulatorEnvironment
 from rl_sensors import *
 from rl_targets import ConstantVelocityTarget
 from rl_metrics import SimulationMetrics
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     use_true_target_state = False
 
     gamma = .99
-    reward_strategy = RewardByDistance()
+    reward_strategy = RewardByTrace()
     reward_printer = RawRewardPrinter()
 
     agent = TFLinearStochasticBatchPolicyOTPSensor(num_input=num_input, init_learning_rate=init_learning_rate,
@@ -44,7 +44,7 @@ if __name__ == "__main__":
                                                    batch_size=batch_size, shuffle=shuffle, init_pos=sensor_init_pos,
                                                    reduction=reduction, optimizer=optimizer)
 
-    environment = OTPEnvironment(bearing_variance=bearing_variance)
+    environment = OTPSimulatorEnvironment(bearing_variance=bearing_variance)
 
     simulator = OTPSimulator(max_num_episodes=max_num_episodes, episode_length=episode_length, state_size=num_input,
                              use_true_target_state=use_true_target_state)

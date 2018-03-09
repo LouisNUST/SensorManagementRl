@@ -1,5 +1,5 @@
 from rl_simulator import OTPSimulator
-from rl_environment import OTPEnvironment
+from rl_simulator_environment import OTPSimulatorEnvironment
 from rl_sensors import *
 from rl_targets import ConstantVelocityTarget
 from rl_metrics import SimulationMetrics
@@ -39,7 +39,7 @@ if __name__ == "__main__":
                                               learning_rate_N_max=learning_rate_N_max, sigma=sensor_sigma,
                                               init_pos=sensor_init_pos, optimizer=optimizer)
 
-    environment = OTPEnvironment(bearing_variance=bearing_variance)
+    environment = OTPSimulatorEnvironment(bearing_variance=bearing_variance)
 
     simulator = OTPSimulator(max_num_episodes=max_num_episodes, episode_length=episode_length, state_size=num_input,
                              use_true_target_state=use_true_target_state)

@@ -1,4 +1,4 @@
-from rl_environment import OTPEnvironment
+from rl_simulator_environment import OTPSimulatorEnvironment
 from rl_metrics import SimulationMetrics
 from rl_sensors import *
 from rl_simulator import OTPSimulator
@@ -10,7 +10,7 @@ if __name__ == "__main__":
     agent = TFNeuralNetStochasticPolicyOTPSensor(num_input=8, init_learning_rate=1e-6, min_learning_rate=1e-10,
                                                  learning_rate_N_max=10000, shuffle=True, batch_size=1)
 
-    environment = OTPEnvironment(bearing_variance=1E-2)
+    environment = OTPSimulatorEnvironment(bearing_variance=1E-2)
 
     simulator = OTPSimulator(max_num_episodes=3000, episode_length=2000)
 

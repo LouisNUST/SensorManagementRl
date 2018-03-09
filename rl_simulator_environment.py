@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class OTPEnvironment:
+class OTPSimulatorEnvironment:
     def __init__(self, x_min=-50000, x_max=50000, y_min=-50000, y_max=50000, vel_min=-10, vel_max=10, bearing_variance=1):
         self._x_min = x_min
         self._x_max = x_max
