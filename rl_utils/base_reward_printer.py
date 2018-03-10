@@ -1,5 +1,5 @@
 class BaseRewardPrinter:
-    def __init__(self, window=100):
+    def __init__(self, window=10):
         self._window = window
 
     def print_reward(self, episode, episode_rewards):
