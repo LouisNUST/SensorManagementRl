@@ -3,3 +3,4 @@ from .reward_by_trace import RewardByTrace
 from .reward_by_uncertainty import RewardByUncertainty
 from .reward_by_uncertainty_shaped import RewardByUncertaintyShaped
 from .reward_by_uncertainty_old import RewardByUncertaintyOld
+from .reward_by_distance_discrete import RewardByDistanceDiscrete

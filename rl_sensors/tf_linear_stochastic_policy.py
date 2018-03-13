@@ -6,7 +6,7 @@ import tensorflow as tf
 
 class TFLinearStochasticPolicyOTPSensor:
     def __init__(self, num_input, init_learning_rate=1e-6, min_learning_rate=1e-10, learning_rate_N_max=10000,
-                 sigma=None, init_pos=None, optimizer=tf.train.GradientDescentOptimizer):
+                 init_sigma=1., init_pos=None, optimizer=tf.train.GradientDescentOptimizer):
         self._sess = tf.Session()
         dtype = tf.float32
         self._states = tf.placeholder(dtype, [1, num_input], name="states")
@@ -19,19 +19,11 @@ class TFLinearStochasticPolicyOTPSensor:
         with tf.name_scope("network_variables"):
             # policy parameters
             self._mu_theta = tf.get_variable("mu_theta", [2, num_input],
-                                             initializer=tf.random_normal_initializer(), dtype=dtype)
-            self._mu_bias = tf.get_variable("mu_bias", [2],
-                                            initializer=tf.constant_initializer(0), dtype=dtype)
-            if sigma is None:
-                self._sigma_theta = tf.get_variable("sigma_theta", [2, 1],
-                                                    initializer=tf.random_normal_initializer(), dtype=dtype)
+                                             initializer=tf.random_normal_initializer(stddev=0.3), dtype=dtype)
 
-        self._mu = tf.matmul(self._states, tf.transpose(self._mu_theta)) + self._mu_bias
+        self._mu = tf.matmul(self._states, tf.transpose(self._mu_theta))
 
-        if sigma is None:
-            self._sigma = tf.nn.softplus(self._sigma_theta) + 1e-5 # tf.exp(self._sigma_theta)
-        else:
-            self._sigma = tf.constant(sigma, dtype=dtype)
+        self._sigma = tf.placeholder(dtype, shape=[])
 
         self._optimizer = optimizer(learning_rate=self._learning_rate)
 
@@ -48,7 +40,7 @@ class TFLinearStochasticPolicyOTPSensor:
         self._all_rewards = []
         self._max_reward_length = 1000000
 
-        self._sigma_in = sigma
+        self._sigma_in = init_sigma
         self._num_input = num_input
         self._init_pos = init_pos
         self.reset_location()
@@ -68,7 +60,8 @@ class TFLinearStochasticPolicyOTPSensor:
     def update_location(self, system_state):
         # Gaussian policy
         mu, sigma = self._sess.run([self._mu, self._sigma], feed_dict={
-            self._states: np.reshape(system_state, (1, self._num_input))
+            self._states: np.reshape(system_state, (1, self._num_input)),
+            self._sigma: self._sigma_in
         })
         delta = np.random.normal(mu, sigma)
 
@@ -98,10 +91,17 @@ class TFLinearStochasticPolicyOTPSensor:
         beta = np.log((alpha / l_min - 1)) / N_max
         return alpha / (1 + np.exp(beta * iteration))
 
+    def _update_sigma(self, iteration):
+        if self._sigma_in <= .1:
+            return
+        if iteration > 0 and iteration % 1000 == 0:
+            self._sigma_in -= .1
+
     def update_parameters(self, iteration, discounted_return, episode_states):
         episode_actions = self._sensor_actions
         learning_rate = self._gen_learning_rate(iteration, l_max=self._init_learning_rate,
                                                 l_min=self._min_learning_rate, N_max=self._learning_rate_N_max)
+        self._update_sigma(iteration)
 
         # reduce gradient variance by normalization
         self._all_rewards += discounted_return.tolist()
@@ -112,7 +112,7 @@ class TFLinearStochasticPolicyOTPSensor:
         N = len(episode_states)
 
         all_samples = []
-        for t in range(N-1):
+        for t in range(N):
             state  = np.reshape(np.array(episode_states[t]), (1, self._num_input))
             action = np.reshape(np.array(episode_actions[t][0]), (1, 2))
             reward = np.reshape(np.array([discounted_return[t]]), (1, 1))
@@ -129,7 +129,8 @@ class TFLinearStochasticPolicyOTPSensor:
                 self._states:             states,
                 self._taken_actions:      actions,
                 self._discounted_rewards: rewards,
-                self._learning_rate:      learning_rate
+                self._learning_rate:      learning_rate,
+                self._sigma:              self._sigma_in
             })
         return True
 

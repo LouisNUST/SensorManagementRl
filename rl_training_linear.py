@@ -12,9 +12,9 @@ if __name__ == "__main__":
 
     num_input = 6
     init_learning_rate = 1e-3
-    min_learning_rate = 1e-10
-    learning_rate_N_max = 3000
-    sensor_sigma = 1
+    min_learning_rate = 1e-8
+    learning_rate_N_max = 10000
+    sensor_sigma = 1.
     optimizer = tf.train.GradientDescentOptimizer
     featurizer = None
 
@@ -26,17 +26,17 @@ if __name__ == "__main__":
 
     bearing_variance = 1e-2
 
-    max_num_episodes = 3000
-    episode_length = 2000
-    use_true_target_state = False
+    max_num_episodes = 10000
+    episode_length = 1500
+    use_true_target_state = True
 
     gamma = .99
-    reward_strategy = RewardByUncertaintyOld()
-    reward_printer = PeriodicAverageRewardPrinter(window=10)
+    reward_strategy = RewardByDistanceDiscrete()
+    reward_printer = PeriodicAverageRewardPrinter(window=100)
 
     agent = TFLinearStochasticPolicyOTPSensor(num_input=num_input, init_learning_rate=init_learning_rate,
                                               min_learning_rate=min_learning_rate,
-                                              learning_rate_N_max=learning_rate_N_max, sigma=sensor_sigma,
+                                              learning_rate_N_max=learning_rate_N_max, init_sigma=sensor_sigma,
                                               init_pos=sensor_init_pos, optimizer=optimizer)
 
     environment = OTPSimulatorEnvironment(bearing_variance=bearing_variance)

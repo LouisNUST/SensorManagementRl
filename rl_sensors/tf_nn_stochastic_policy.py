@@ -147,6 +147,9 @@ class TFNeuralNetStochasticPolicyOTPSensor:
     def get_sigmas(self):
         return self._sensor_sigmas
 
+    def get_actions(self):
+        return self._sensor_actions
+
     def _gen_learning_rate(self, iteration, l_max, l_min, N_max):
         if iteration > N_max:
             return l_min
@@ -154,8 +157,10 @@ class TFNeuralNetStochasticPolicyOTPSensor:
         beta = np.log((alpha / l_min - 1)) / N_max
         return alpha / (1 + np.exp(beta * iteration))
 
-    def update_parameters(self, iteration, discounted_return, episode_states):
-        episode_actions = self._sensor_actions
+    def update_parameters(self, iteration, discounted_return, episode_states, episode_actions=None):
+        if episode_actions is None:
+            episode_actions = self.get_actions()
+
         learning_rate = self._gen_learning_rate(iteration, l_max=self._init_learning_rate,
                                                 l_min=self._min_learning_rate, N_max=self._learning_rate_N_max)
 
@@ -168,7 +173,7 @@ class TFNeuralNetStochasticPolicyOTPSensor:
         N = len(episode_states)
 
         all_samples = []
-        for t in range(N-1):
+        for t in range(N):
             state  = np.reshape(np.array(episode_states[t]), self._num_input)
             action = episode_actions[t][0]
             reward = [discounted_return[t]]
