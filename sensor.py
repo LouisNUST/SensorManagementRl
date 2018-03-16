@@ -63,7 +63,7 @@ class sensor(motion_model,motion_init_object):
         y = []
         [x.append(z[0]) for z in self.historical_location]
         [y.append(z[1]) for z in self.historical_location]
-        plot1, = plt.plot(x,y,"bs-",linewidth=3)
+        plot1, = plt.plot(x,y,"b--",linewidth=1)
         plt.xlabel("x",size=15)
         plt.ylabel("y",size=15)
         plt.grid(True)
@@ -91,14 +91,72 @@ class sensor(motion_model,motion_init_object):
 
             return (Delta)
 
-    def update_location_decentralized(self,actions):
+    def find_index(self,array,val):
+        return (np.argwhere(array==val)[0][0])
+    def update_location_decentralized(self,target_actions,sigma,params):
+        x_actions = np.array(target_actions)[:, 0]
+        y_actions = np.array(target_actions)[:, 1]
 
-        final_action = np.mean(actions,axis=0)
-        self.sensor_actions.append(final_action)
-        new_x = self.current_location[0] + final_action[0]
-        new_y = self.current_location[1] + final_action[1]
+        num_targets = len(x_actions)
+        index_matrix_1 = np.zeros([2*3,num_targets])
+        index_matrix_2 = np.zeros([2*3, num_targets])
+
+        #Create index matrix for back-propagating error
+        min_x_action = np.min(x_actions)
+        index = self.find_index(x_actions,min_x_action)
+        index_matrix_1[0,index] = 1
+        max_x_action = np.max(x_actions)
+        #index = x_actions.searchsorted(max_x_action)
+        index = self.find_index(x_actions, max_x_action)
+        index_matrix_1[1,index] = 1
+
+        mean_x_action = np.mean(x_actions)
+        index_matrix_1[2,:] = (1.0/num_targets)*np.ones([1,num_targets])
+
+        #median_x_action = np.median(x_actions)
+
+        #index = self.find_index(x_actions, median_x_action)
+        #index_matrix_1[3,index] = 1
+
+
+        min_y_action = np.min(y_actions)
+        index = self.find_index(y_actions,min_y_action)
+        index_matrix_2[3,index] = 1
+        max_y_action = np.max(y_actions)
+        index = self.find_index(y_actions,max_y_action)
+        index_matrix_2[4,index] = 1
+        mean_y_action = np.mean(y_actions)
+        index_matrix_2[5,:] = (1.0/num_targets)*np.ones([1,num_targets])
+        #median_y_action = np.median(y_actions)
+        #index = self.find_index(y_actions,median_y_action)
+        #index_matrix_2[7,index] = 1
+
+
+        unnormalized_features = [min_x_action,max_x_action,mean_x_action] \
+                                + [min_y_action,max_y_action,mean_y_action]
+        # normalize features
+        MAX_VAL = 20
+        MIN_VAL = -20
+        slope = (2.0) / (MAX_VAL - MIN_VAL)
+        normalized_features = []
+        for s in unnormalized_features: normalized_features.append(1.0 + slope * (s - MAX_VAL))
+
+        weight = params[0]['weight2']
+        Delta = np.random.normal(weight.dot(np.reshape(normalized_features,[len(normalized_features),1])), sigma)
+        self.sensor_actions.append(Delta)
+        # Delta = np.random.normal(np.zeros([2]),sigma)
+        new_x = self.current_location[0] + Delta[0]
+        new_y = self.current_location[1] + Delta[1]
         self.current_location = [new_x, new_y]
         self.historical_location.append(self.current_location)
+
+        #final_action = np.mean(actions,axis=0)
+        #self.sensor_actions.append(final_action)
+        #new_x = self.current_location[0] + final_action[0]
+        #new_y = self.current_location[1] + final_action[1]
+        #self.current_location = [new_x, new_y]
+        #self.historical_location.append(self.current_location)
+        return (normalized_features,index_matrix_1*slope,index_matrix_2*slope,slope)
 
 
     def update_location_new(self,params,state,sigma):
